@@ -3,7 +3,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 TICKER_MAP = {
-    # US - ASIC
+    # US - ASIC / AI Chip
     "博通": ("AVGO", "Broadcom", "us"),
     "Broadcom": ("AVGO", "Broadcom", "us"),
     "AVGO": ("AVGO", "Broadcom", "us"),
@@ -11,6 +11,14 @@ TICKER_MAP = {
     "MRVL": ("MRVL", "Marvell Tech", "us"),
     "Credo": ("CRDO", "Credo Tech", "us"),
     "CRDO": ("CRDO", "Credo Tech", "us"),
+    "NVIDIA": ("NVDA", "NVIDIA", "us"),
+    "輝達": ("NVDA", "NVIDIA", "us"),
+    "NVDA": ("NVDA", "NVIDIA", "us"),
+    "AMD": ("AMD", "AMD", "us"),
+    "超微": ("AMD", "AMD", "us"),
+    "Intel": ("INTC", "Intel", "us"),
+    "英特爾": ("INTC", "Intel", "us"),
+    "INTC": ("INTC", "Intel", "us"),
     # US - CPU-IP
     "Arm": ("ARM", "Arm Holdings", "us"),
     "ARM": ("ARM", "Arm Holdings", "us"),
@@ -22,6 +30,20 @@ TICKER_MAP = {
     "Lam Research": ("LRCX", "Lam Research", "us"),
     "Lam": ("LRCX", "Lam Research", "us"),
     "LRCX": ("LRCX", "Lam Research", "us"),
+    # US - Mega Cap Tech
+    "Apple": ("AAPL", "Apple", "us"),
+    "蘋果": ("AAPL", "Apple", "us"),
+    "AAPL": ("AAPL", "Apple", "us"),
+    "Meta": ("META", "Meta Platforms", "us"),
+    "META": ("META", "Meta Platforms", "us"),
+    "Amazon": ("AMZN", "Amazon", "us"),
+    "AMZN": ("AMZN", "Amazon", "us"),
+    "Google": ("GOOGL", "Alphabet", "us"),
+    "Alphabet": ("GOOGL", "Alphabet", "us"),
+    "GOOGL": ("GOOGL", "Alphabet", "us"),
+    "Microsoft": ("MSFT", "Microsoft", "us"),
+    "微軟": ("MSFT", "Microsoft", "us"),
+    "MSFT": ("MSFT", "Microsoft", "us"),
     # US - Power
     "Vistra": ("VST", "Vistra Corp", "us"),
     "VST": ("VST", "Vistra Corp", "us"),
@@ -35,6 +57,8 @@ TICKER_MAP = {
     "TSLA": ("TSLA", "Tesla", "us"),
     "Serve Robotics": ("SERV", "Serve Robotics", "us"),
     "SERV": ("SERV", "Serve Robotics", "us"),
+    "Uber": ("UBER", "Uber", "us"),
+    "UBER": ("UBER", "Uber", "us"),
     # US - Quantum
     "IonQ": ("IONQ", "IonQ", "us"),
     "IONQ": ("IONQ", "IonQ", "us"),
@@ -58,9 +82,14 @@ TICKER_MAP = {
     "雙鴻": ("3324", "雙鴻", "tw"),
     # TW - Connector
     "信音": ("6126", "信音", "tw"),
+    # TW - Passive
+    "國巨": ("2327", "國巨", "tw"),
     # TW - Financial
     "富邦金": ("2881", "富邦金", "tw"),
     "開發金": ("2883", "開發金", "tw"),
+    # TW - ETF
+    "元大台灣50": ("0050", "元大台灣50", "tw"),
+    "0050": ("0050", "元大台灣50", "tw"),
 }
 
 _TICKER_REVERSE = {}
