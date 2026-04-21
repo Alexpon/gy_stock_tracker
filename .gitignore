@@ -1,0 +1,7 @@
+# Backend
+.env
+data/gooaye.db
+data/audio/
+__pycache__/
+*.pyc
+.pytest_cache/
