@@ -17,10 +17,11 @@ function V1_computeDelayed(pick, period, delayDays) {
   return (exit - entry) / entry * 100;
 }
 
-function V1_benchForPeriod(bench_q1, period) {
-  // bench_q1 is 1季報酬；按比例縮放
-  const mul = period === 'q1' ? 1 : period === 'm1' ? 0.35 : period === 'w2' ? 0.15 : 0.08;
-  return bench_q1 * mul;
+function V1_benchForPeriod(pick, period) {
+  const key = `bench_${period}`;
+  const val = pick[key];
+  if (val !== null && val !== undefined) return val;
+  return 0;
 }
 
 function V1_filterByConfidence(pool, followOnly) {
@@ -46,7 +47,7 @@ function V1_CumulativeChart({ episodes, picks, market, period, config }) {
       return { ep: ep.ep, date: ep.date, cumStrat, cumBench, epPnl: 0, epBench: 0, hasData: false };
     }
     const avg = filt.reduce((a, p) => a + V1_computeDelayed(p, period, delay), 0) / filt.length;
-    const bench = filt.reduce((a, p) => a + V1_benchForPeriod(p.bench_q1, period), 0) / filt.length;
+    const bench = filt.reduce((a, p) => a + V1_benchForPeriod(p, period), 0) / filt.length;
     const epPnl = cap * avg / 100;
     const epBench = cap * bench / 100;
     cumStrat += epPnl;
@@ -218,7 +219,7 @@ function V1_ConfidenceBreakdown({ episodes, picks, market, period, config }) {
     });
     const epRows = [...epMap.entries()].map(([ep, list]) => {
       const avg = list.reduce((a, p) => a + V1_computeDelayed(p, period, delay), 0) / list.length;
-      const bench = list.reduce((a, p) => a + V1_benchForPeriod(p.bench_q1, period), 0) / list.length;
+      const bench = list.reduce((a, p) => a + V1_benchForPeriod(p, period), 0) / list.length;
       return { ep, avg, bench };
     });
     const avgRet = epRows.reduce((a, r) => a + r.avg, 0) / epRows.length;

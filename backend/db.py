@@ -40,7 +40,7 @@ def init_db():
             segment_end   REAL,
             entry         REAL,
             w1 REAL, w2 REAL, m1 REAL, q1 REAL,
-            bench_q1      REAL,
+            bench_w1 REAL, bench_w2 REAL, bench_m1 REAL, bench_q1 REAL,
             sparkline     TEXT,
             status        TEXT DEFAULT 'pending',
             created_at    TEXT DEFAULT (datetime('now')),
@@ -111,12 +111,15 @@ def insert_pick(ep, ticker, name, market, confidence, sector=None, quote=None,
 
 
 def update_pick_prices(ep, ticker, entry=None, w1=None, w2=None, m1=None, q1=None,
-                       bench_q1=None, sparkline=None, status=None):
+                       bench_w1=None, bench_w2=None, bench_m1=None, bench_q1=None,
+                       sparkline=None, status=None):
     conn = _connect()
     fields = []
     values = []
     for col, val in [("entry", entry), ("w1", w1), ("w2", w2), ("m1", m1), ("q1", q1),
-                     ("bench_q1", bench_q1), ("sparkline", sparkline), ("status", status)]:
+                     ("bench_w1", bench_w1), ("bench_w2", bench_w2),
+                     ("bench_m1", bench_m1), ("bench_q1", bench_q1),
+                     ("sparkline", sparkline), ("status", status)]:
         if val is not None:
             fields.append(f"{col} = ?")
             values.append(val)

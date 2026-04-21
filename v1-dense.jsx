@@ -278,8 +278,7 @@ function V1_PicksTable({ picks, episodes, period, market, onSelect, selected }) 
       const rank = { doing: 0, watching: 1, mention: 2 };
       av = rank[a.confidence]; bv = rank[b.confidence];
     } else if (sortKey === 'bench') {
-      const mul = period === 'q1' ? 1 : period === 'm1' ? 0.35 : period === 'w2' ? 0.15 : 0.08;
-      av = a[period] - a.bench_q1 * mul; bv = b[period] - b.bench_q1 * mul;
+      av = a[period] - (a[`bench_${period}`] || 0); bv = b[period] - (b[`bench_${period}`] || 0);
     }
     return sortDir === 'desc' ? bv - av : av - bv;
   });
@@ -329,8 +328,7 @@ function V1_PicksTable({ picks, episodes, period, market, onSelect, selected }) 
             {sorted.map((p, i) => {
               const isSel = selected && selected.ticker === p.ticker && selected.ep === p.ep;
               const val = p[period]; const positive = val >= 0;
-              const mul = period === 'q1' ? 1 : period === 'm1' ? 0.35 : period === 'w2' ? 0.15 : 0.08;
-              const diff = val - p.bench_q1 * mul;
+              const diff = val - (p[`bench_${period}`] || 0);
               const bg = isSel ? V1_C.accentBg : (i % 2 === 0 ? V1_C.surface : '#fbfcfd');
               return (
                 <tr key={`${p.ticker}-${p.ep}`} onClick={() => onSelect(p)}
@@ -361,7 +359,7 @@ function V1_PicksTable({ picks, episodes, period, market, onSelect, selected }) 
 function V1_DetailPanel({ pick, episodes, onClose }) {
   if (!pick) return null;
   const ep = episodes.find(e => e.ep === pick.ep);
-  const benchApprox = { w1: pick.bench_q1*0.08, w2: pick.bench_q1*0.15, m1: pick.bench_q1*0.35, q1: pick.bench_q1 };
+  const benchApprox = { w1: pick.bench_w1 || 0, w2: pick.bench_w2 || 0, m1: pick.bench_m1 || 0, q1: pick.bench_q1 || 0 };
   return (
     <div style={{
       position: 'fixed', top: 0, right: 0, bottom: 0, width: 460, background: V1_C.surface,
@@ -502,10 +500,7 @@ function V1_StrategyTable({ episodes, picks, market, period, config }) {
                         (config.followOnly === 'doing_watching' && (p.confidence === 'doing' || p.confidence === 'watching')));
     if (filtered.length === 0) return null;
     const avg = filtered.reduce((a, p) => a + p[period], 0) / filtered.length;
-    const bench = filtered.reduce((a, p) => {
-      const mul = period === 'q1' ? 1 : period === 'm1' ? 0.35 : period === 'w2' ? 0.15 : 0.08;
-      return a + p.bench_q1 * mul;
-    }, 0) / filtered.length;
+    const bench = filtered.reduce((a, p) => a + (p[`bench_${period}`] || 0), 0) / filtered.length;
     return { ep, picks: filtered, avg, bench, alpha: avg - bench };
   }).filter(Boolean);
 
