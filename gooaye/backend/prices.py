@@ -76,20 +76,25 @@ def calculate_returns(ticker, market, entry_date_str, entry_price):
     return returns
 
 
-def _calculate_bench_return(market, entry_date_str, period_days):
+def calculate_bench_returns(market, entry_date_str):
     import pandas as pd
     bt = bench_ticker(market)
     start = datetime.strptime(entry_date_str, "%Y-%m-%d")
     end = datetime.now() + timedelta(days=1)
     data = yf.download(bt, start=start.strftime("%Y-%m-%d"), end=end.strftime("%Y-%m-%d"), progress=False)
-    if data.empty or len(data) < period_days:
-        return None
-    # Flatten MultiIndex columns if present
+    if data.empty:
+        return {"bench_w1": None, "bench_w2": None, "bench_m1": None, "bench_q1": None}
     if isinstance(data.columns, pd.MultiIndex):
         data = data.droplevel(1, axis=1)
     entry = float(data["Close"].iloc[0])
-    close = float(data["Close"].iloc[period_days - 1])
-    return round((close - entry) / entry * 100, 1)
+    results = {}
+    for period, days in RETURN_PERIODS:
+        if len(data) >= days:
+            close = float(data["Close"].iloc[days - 1])
+            results[f"bench_{period}"] = round((close - entry) / entry * 100, 1)
+        else:
+            results[f"bench_{period}"] = None
+    return results
 
 
 def fetch_new_picks(ep):
@@ -112,7 +117,7 @@ def fetch_new_picks(ep):
         entry_date_str = entry_date.strftime("%Y-%m-%d")
 
         returns = calculate_returns(pick["ticker"], pick["market"], entry_date_str, entry)
-        bench = _calculate_bench_return(pick["market"], entry_date_str, 63)
+        bench = calculate_bench_returns(pick["market"], entry_date_str)
 
         status = "completed" if returns.get("q1") is not None else "backfilling"
 
@@ -124,7 +129,10 @@ def fetch_new_picks(ep):
             w2=returns.get("w2"),
             m1=returns.get("m1"),
             q1=returns.get("q1"),
-            bench_q1=bench,
+            bench_w1=bench.get("bench_w1"),
+            bench_w2=bench.get("bench_w2"),
+            bench_m1=bench.get("bench_m1"),
+            bench_q1=bench.get("bench_q1"),
             sparkline=json.dumps(returns.get("sparkline", [])),
             status=status,
         )
@@ -145,7 +153,7 @@ def backfill_all():
         entry_date_str = entry_date.strftime("%Y-%m-%d")
 
         returns = calculate_returns(pick["ticker"], pick["market"], entry_date_str, pick["entry"])
-        bench = _calculate_bench_return(pick["market"], entry_date_str, 63)
+        bench = calculate_bench_returns(pick["market"], entry_date_str)
 
         status = "completed" if returns.get("q1") is not None else "backfilling"
 
@@ -156,7 +164,10 @@ def backfill_all():
             w2=returns.get("w2"),
             m1=returns.get("m1"),
             q1=returns.get("q1"),
-            bench_q1=bench,
+            bench_w1=bench.get("bench_w1"),
+            bench_w2=bench.get("bench_w2"),
+            bench_m1=bench.get("bench_m1"),
+            bench_q1=bench.get("bench_q1"),
             sparkline=json.dumps(returns.get("sparkline", [])),
             status=status,
         )

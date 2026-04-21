@@ -29,6 +29,9 @@ window.GOOAYE_DATA = {
       "w2": null,
       "m1": null,
       "q1": null,
+      "bench_w1": null,
+      "bench_w2": null,
+      "bench_m1": null,
       "bench_q1": null,
       "entry": 2030.0,
       "sparkline": [
@@ -49,6 +52,9 @@ window.GOOAYE_DATA = {
       "w2": null,
       "m1": null,
       "q1": null,
+      "bench_w1": null,
+      "bench_w2": null,
+      "bench_m1": null,
       "bench_q1": null,
       "entry": 84.55,
       "sparkline": [
@@ -69,11 +75,14 @@ window.GOOAYE_DATA = {
       "w2": null,
       "m1": null,
       "q1": null,
+      "bench_w1": null,
+      "bench_w2": null,
+      "bench_m1": null,
       "bench_q1": null,
       "entry": 199.98,
       "sparkline": [
         202.06,
-        201.75
+        201.22
       ]
     },
     {
@@ -89,11 +98,14 @@ window.GOOAYE_DATA = {
       "w2": null,
       "m1": null,
       "q1": null,
+      "bench_w1": null,
+      "bench_w2": null,
+      "bench_m1": null,
       "bench_q1": null,
       "entry": 681.36,
       "sparkline": [
         670.91,
-        673.42
+        672.27
       ]
     },
     {
@@ -109,11 +121,14 @@ window.GOOAYE_DATA = {
       "w2": null,
       "m1": null,
       "q1": null,
+      "bench_w1": null,
+      "bench_w2": null,
+      "bench_m1": null,
       "bench_q1": null,
       "entry": 249.19,
       "sparkline": [
         248.28,
-        252.47
+        252.12
       ]
     },
     {
@@ -129,6 +144,9 @@ window.GOOAYE_DATA = {
       "w2": null,
       "m1": null,
       "q1": null,
+      "bench_w1": null,
+      "bench_w2": null,
+      "bench_m1": null,
       "bench_q1": null,
       "entry": 206.0,
       "sparkline": [
@@ -149,6 +167,9 @@ window.GOOAYE_DATA = {
       "w2": null,
       "m1": null,
       "q1": null,
+      "bench_w1": null,
+      "bench_w2": null,
+      "bench_m1": null,
       "bench_q1": null,
       "entry": 320.0,
       "sparkline": [
@@ -169,6 +190,9 @@ window.GOOAYE_DATA = {
       "w2": null,
       "m1": null,
       "q1": null,
+      "bench_w1": null,
+      "bench_w2": null,
+      "bench_m1": null,
       "bench_q1": null,
       "entry": 361.0,
       "sparkline": [
@@ -189,11 +213,14 @@ window.GOOAYE_DATA = {
       "w2": null,
       "m1": null,
       "q1": null,
+      "bench_w1": null,
+      "bench_w2": null,
+      "bench_m1": null,
       "bench_q1": null,
       "entry": 270.33,
       "sparkline": [
         273.05,
-        271.57
+        267.12
       ]
     },
     {
@@ -209,6 +236,9 @@ window.GOOAYE_DATA = {
       "w2": 0.8,
       "m1": 7.6,
       "q1": null,
+      "bench_w1": 0.5,
+      "bench_w2": -0.5,
+      "bench_m1": 7.1,
       "bench_q1": null,
       "entry": 1759.26,
       "sparkline": [
@@ -251,6 +281,9 @@ window.GOOAYE_DATA = {
       "w2": -1.7,
       "m1": 2.0,
       "q1": null,
+      "bench_w1": 0.5,
+      "bench_w2": -0.5,
+      "bench_m1": 7.1,
       "bench_q1": null,
       "entry": 1740.0,
       "sparkline": [
@@ -293,6 +326,9 @@ window.GOOAYE_DATA = {
       "w2": -9.6,
       "m1": -23.7,
       "q1": null,
+      "bench_w1": -0.1,
+      "bench_w2": -0.3,
+      "bench_m1": -0.8,
       "bench_q1": null,
       "entry": 112.55,
       "sparkline": [
@@ -319,7 +355,7 @@ window.GOOAYE_DATA = {
         91.61,
         98.97,
         90.94,
-        81.74
+        81.26
       ]
     },
     {
@@ -335,6 +371,9 @@ window.GOOAYE_DATA = {
       "w2": 1.6,
       "m1": -3.1,
       "q1": null,
+      "bench_w1": -0.1,
+      "bench_w2": -0.3,
+      "bench_m1": -0.8,
       "bench_q1": null,
       "entry": 69.89,
       "sparkline": [
@@ -377,6 +416,9 @@ window.GOOAYE_DATA = {
       "w2": -0.5,
       "m1": 7.1,
       "q1": null,
+      "bench_w1": 0.5,
+      "bench_w2": -0.5,
+      "bench_m1": 7.1,
       "bench_q1": null,
       "entry": 72.25,
       "sparkline": [
@@ -419,6 +461,9 @@ window.GOOAYE_DATA = {
       "w2": 11.4,
       "m1": 48.3,
       "q1": null,
+      "bench_w1": 0.5,
+      "bench_w2": -0.5,
+      "bench_m1": 7.1,
       "bench_q1": null,
       "entry": 72.5,
       "sparkline": [
