@@ -5,3 +5,5 @@ feedparser
 schedule
 python-dotenv
 pytest
+fastapi
+uvicorn[standard]
