@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from backend import db, rss, transcribe, extract, prices
+from backend.generate import format_episodes, format_picks, compute_stats
 
 
 @asynccontextmanager
@@ -93,3 +94,29 @@ def process_episode(ep: int):
             return {"success": False, "steps": steps, "error": str(e)}
 
     return {"success": True, "steps": steps}
+
+
+@app.get("/api/data")
+def get_data():
+    episodes = db.get_latest_episodes(n=10)
+    if not episodes:
+        return {"episodes": [], "picks": [], "stats": {"us": {}, "tw": {}}}
+
+    ep_list = [e["ep"] for e in episodes]
+    picks = db.get_picks_for_episodes(ep_list)
+    ep_dates = {e["ep"]: e["date"] for e in episodes}
+
+    formatted_eps = format_episodes(episodes)
+    formatted_picks = format_picks(picks, ep_dates)
+
+    us_picks = [p for p in formatted_picks if p["market"] == "us"]
+    tw_picks = [p for p in formatted_picks if p["market"] == "tw"]
+
+    return {
+        "episodes": formatted_eps,
+        "picks": formatted_picks,
+        "stats": {
+            "us": compute_stats(us_picks, "us"),
+            "tw": compute_stats(tw_picks, "tw"),
+        },
+    }
