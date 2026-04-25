@@ -67,3 +67,51 @@ def test_scan_finds_new(client):
     data = resp.json()
     assert data["total_new"] == 1
     assert data["new_episodes"][0]["ep"] == 659
+
+
+def test_process_episode_not_found(client):
+    resp = client.post("/api/process/999")
+    assert resp.status_code == 404
+
+
+def test_process_episode_full_pipeline(seeded_db):
+    with patch("backend.transcribe.run") as mock_stt, \
+         patch("backend.extract.run") as mock_extract, \
+         patch("backend.prices.fetch_new_picks") as mock_prices:
+        resp = seeded_db.post("/api/process/654")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["success"] is True
+    assert data["steps"]["stt"] == "done"
+    assert data["steps"]["extract"] == "done"
+    assert data["steps"]["prices"] == "done"
+    mock_stt.assert_called_once_with(654)
+    mock_extract.assert_called_once_with(654)
+    mock_prices.assert_called_once_with(654)
+
+
+def test_process_episode_skips_completed_steps(seeded_db):
+    """EP630 already has transcript and picks — STT and extract should be skipped."""
+    with patch("backend.transcribe.run") as mock_stt, \
+         patch("backend.extract.run") as mock_extract, \
+         patch("backend.prices.fetch_new_picks") as mock_prices:
+        resp = seeded_db.post("/api/process/630")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["steps"]["stt"] == "skipped"
+    assert data["steps"]["extract"] == "skipped"
+    assert data["steps"]["prices"] == "done"
+    mock_stt.assert_not_called()
+    mock_extract.assert_not_called()
+    mock_prices.assert_called_once_with(630)
+
+
+def test_process_episode_handles_failure(seeded_db):
+    with patch("backend.transcribe.run", side_effect=Exception("STT API timeout")):
+        resp = seeded_db.post("/api/process/654")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["success"] is False
+    assert "STT API timeout" in data["error"]
+    assert data["steps"]["stt"] == "failed"
+    assert data["steps"]["extract"] == "skipped"

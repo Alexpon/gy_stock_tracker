@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
-from backend import db, rss
+from backend import db, rss, transcribe, extract, prices
 
 
 @asynccontextmanager
@@ -57,3 +57,39 @@ def scan_episodes():
         rss.download_audio(ep_info["ep"], ep_info["audio_url"])
         result.append({"ep": ep_info["ep"], "title": ep_info["title"]})
     return {"new_episodes": result, "total_new": len(result)}
+
+
+@app.post("/api/process/{ep}")
+def process_episode(ep: int):
+    episode = db.get_episode(ep)
+    if not episode:
+        raise HTTPException(status_code=404, detail=f"Episode {ep} not found")
+
+    steps = {}
+    pipeline = []
+
+    if episode["transcript"] is None:
+        pipeline.append(("stt", lambda: transcribe.run(ep)))
+    else:
+        steps["stt"] = "skipped"
+
+    existing_picks = db.get_picks_for_episode(ep)
+    if len(existing_picks) == 0:
+        pipeline.append(("extract", lambda: extract.run(ep)))
+    else:
+        steps["extract"] = "skipped"
+
+    pipeline.append(("prices", lambda: prices.fetch_new_picks(ep)))
+
+    for name, fn in pipeline:
+        try:
+            fn()
+            steps[name] = "done"
+        except Exception as e:
+            steps[name] = "failed"
+            remaining = [n for n, _ in pipeline if n not in steps]
+            for r in remaining:
+                steps[r] = "skipped"
+            return {"success": False, "steps": steps, "error": str(e)}
+
+    return {"success": True, "steps": steps}
