@@ -91,8 +91,9 @@ Status derivation logic:
 - `has_prices`: all picks for that episode have non-null `entry` price
 - `status`:
   - `"completed"` — has_transcript AND picks_count > 0 AND has_prices
-  - `"partial"` — at least one of the above is true but not all
-  - `"pending"` — none of the above
+  - `"partial"` — at least one of (has_transcript, picks_count > 0) is true but not all three
+  - `"pending"` — none are true (freshly scanned, no processing done)
+- Edge case: if an episode has transcript but the host mentioned zero stocks, picks_count stays 0. This is still `"partial"` — the extract step ran but found nothing. The user can see this from the STT ✓ + stocks 0 columns.
 
 ### POST /api/scan
 
