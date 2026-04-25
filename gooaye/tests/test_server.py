@@ -1,5 +1,6 @@
 import json
 import pytest
+from unittest.mock import patch
 from fastapi.testclient import TestClient
 from backend import db
 
@@ -43,3 +44,26 @@ def test_episodes_with_data(seeded_db):
     assert eps[1]["has_transcript"] is True
     assert eps[1]["picks_count"] == 1
     assert eps[1]["has_prices"] is False
+
+
+def test_scan_no_new(client):
+    with patch("backend.rss.check_new", return_value=[]):
+        resp = client.post("/api/scan")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total_new"] == 0
+    assert data["new_episodes"] == []
+
+
+def test_scan_finds_new(client):
+    fake_episodes = [
+        {"ep": 659, "title": "EP659 新一集", "date": "2026-04-25",
+         "duration": "3000", "audio_url": "https://example.com/ep659.mp3"}
+    ]
+    with patch("backend.rss.check_new", return_value=fake_episodes), \
+         patch("backend.rss.download_audio"):
+        resp = client.post("/api/scan")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["total_new"] == 1
+    assert data["new_episodes"][0]["ep"] == 659
