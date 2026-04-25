@@ -1,8 +1,5 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-
-function App() {
-  return <div style={{ padding: 40 }}>Gooaye — migrating...</div>;
-}
+import App from './App.jsx';
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App />);
