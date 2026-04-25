@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
-from backend import db
+from fastapi import FastAPI, HTTPException
+from backend import db, rss
 
 
 @asynccontextmanager
@@ -43,3 +43,17 @@ def list_episodes():
             "status": status,
         })
     return {"episodes": result}
+
+
+@app.post("/api/scan")
+def scan_episodes():
+    new_episodes = rss.check_new()
+    result = []
+    for ep_info in new_episodes:
+        db.insert_episode(
+            ep_info["ep"], ep_info["title"], ep_info["date"],
+            ep_info.get("duration"), ep_info.get("audio_url"),
+        )
+        rss.download_audio(ep_info["ep"], ep_info["audio_url"])
+        result.append({"ep": ep_info["ep"], "title": ep_info["title"]})
+    return {"new_episodes": result, "total_new": len(result)}
