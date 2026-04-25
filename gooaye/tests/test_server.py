@@ -115,3 +115,22 @@ def test_process_episode_handles_failure(seeded_db):
     assert "STT API timeout" in data["error"]
     assert data["steps"]["stt"] == "failed"
     assert data["steps"]["extract"] == "skipped"
+
+
+def test_data_endpoint(seeded_db):
+    resp = seeded_db.get("/api/data")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "episodes" in data
+    assert "picks" in data
+    assert "stats" in data
+    assert "us" in data["stats"]
+    assert "tw" in data["stats"]
+
+
+def test_data_endpoint_empty(client):
+    resp = client.get("/api/data")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["episodes"] == []
+    assert data["picks"] == []
