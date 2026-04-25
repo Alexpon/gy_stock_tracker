@@ -1,7 +1,11 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from backend import db, rss, transcribe, extract, prices
 from backend.generate import format_episodes, format_picks, compute_stats
+
+_frontend_dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 
 
 @asynccontextmanager
@@ -120,3 +124,12 @@ def get_data():
             "tw": compute_stats(tw_picks, "tw"),
         },
     }
+
+
+if _frontend_dist.exists():
+    @app.get("/{path:path}")
+    def serve_spa(path: str):
+        file = _frontend_dist / path
+        if file.exists() and file.is_file():
+            return FileResponse(file)
+        return FileResponse(_frontend_dist / "index.html")
