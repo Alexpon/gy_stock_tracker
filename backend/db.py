@@ -170,3 +170,10 @@ def get_latest_episodes(n=10):
     ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+def get_episode_count():
+    conn = _connect()
+    row = conn.execute("SELECT COUNT(*) as cnt FROM episodes").fetchone()
+    conn.close()
+    return row["cnt"]

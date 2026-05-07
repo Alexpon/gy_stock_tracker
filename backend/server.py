@@ -61,13 +61,14 @@ def list_episodes():
     for ep_row in episodes:
         ep_num = ep_row["ep"]
         has_transcript = ep_row["transcript"] is not None
+        extracted = ep_row.get("market_focus") is not None
         picks = db.get_picks_for_episode(ep_num)
         picks_count = len(picks)
-        has_prices = picks_count > 0 and all(
-            p["q1"] is not None for p in picks
+        has_prices = picks_count > 0 and any(
+            p["entry"] is not None for p in picks
         )
 
-        if has_transcript and picks_count > 0 and has_prices:
+        if has_transcript and extracted and (picks_count == 0 or has_prices):
             status = "completed"
         elif has_transcript or picks_count > 0:
             status = "partial"
@@ -84,7 +85,13 @@ def list_episodes():
             "has_prices": has_prices,
             "status": status,
         })
-    return {"episodes": result}
+    total_in_db = db.get_episode_count()
+    completed_count = sum(1 for r in result if r["status"] == "completed")
+    return {
+        "episodes": result,
+        "total": total_in_db,
+        "completed": completed_count,
+    }
 
 
 @app.post("/api/scan")
@@ -114,7 +121,18 @@ def process_episode(ep: int):
     steps = {}
     pipeline = []
 
-    if episode["transcript"] is None:
+    need_stt = episode["transcript"] is None
+    if not need_stt:
+        audio_path = config.AUDIO_DIR / f"EP{ep}.mp3"
+        if audio_path.exists():
+            import json as _json
+            segs = _json.loads(episode["transcript"])
+            max_offset = max((s["end"] for s in segs), default=0) if segs else 0
+            duration = transcribe._get_duration(audio_path)
+            if duration > 0 and max_offset < duration * 0.8:
+                need_stt = True
+
+    if need_stt:
         if not episode.get("audio_path"):
             audio_url = episode.get("rss_url", "")
             if audio_url:
@@ -129,7 +147,7 @@ def process_episode(ep: int):
         steps["stt"] = "skipped"
 
     existing_picks = db.get_picks_for_episode(ep)
-    if len(existing_picks) == 0:
+    if len(existing_picks) == 0 and (need_stt or not episode.get("market_focus")):
         pipeline.append(("extract", lambda: extract.run(ep)))
     else:
         steps["extract"] = "skipped"
