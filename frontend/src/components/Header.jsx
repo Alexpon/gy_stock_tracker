@@ -1,6 +1,6 @@
 import { C } from '../constants.js';
 
-export function Header({ market, setMarket, route }) {
+export function Header({ market, setMarket, route, period, setPeriod }) {
   const routeLabel = {
     action: '決策 · Action',
     analysis: '歷史回測 · Analysis',
@@ -16,6 +16,19 @@ export function Header({ market, setMarket, route }) {
         {routeLabel}
       </div>
       <div style={{ flex: 1 }} />
+      {route === 'analysis' && setPeriod && (
+        <div style={{ display: 'inline-flex', background: C.surfaceAlt, padding: 2, borderRadius: 6, border: `1px solid ${C.border}` }}>
+          {[['w1','1W'],['w2','2W'],['m1','1M'],['q1','1Q']].map(([k, label]) => (
+            <button key={k} onClick={() => setPeriod(k)} style={{
+              border: 'none', padding: '6px 12px', fontSize: 11, fontWeight: 600, cursor: 'pointer', borderRadius: 4,
+              background: period === k ? C.surface : 'transparent',
+              color: period === k ? C.text : C.textMuted,
+              boxShadow: period === k ? '0 1px 2px rgba(16,24,40,0.06)' : 'none',
+              fontFamily: 'var(--font-mono)',
+            }}>{label}</button>
+          ))}
+        </div>
+      )}
       {route !== 'episodes' && (
         <div style={{ display: 'inline-flex', background: C.surfaceAlt, padding: 2, borderRadius: 6, border: `1px solid ${C.border}` }}>
           {['us', 'tw'].map(m => (

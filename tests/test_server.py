@@ -58,10 +58,9 @@ def test_scan_no_new(client):
 def test_scan_finds_new(client):
     fake_episodes = [
         {"ep": 659, "title": "EP659 新一集", "date": "2026-04-25",
-         "duration": "3000", "audio_url": "https://example.com/ep659.mp3"}
+         "duration": "3000", "rss_url": "https://example.com/ep659.mp3"}
     ]
-    with patch("backend.rss.check_new", return_value=fake_episodes), \
-         patch("backend.rss.download_audio"):
+    with patch("backend.rss.check_new", return_value=fake_episodes):
         resp = client.post("/api/scan")
     assert resp.status_code == 200
     data = resp.json()

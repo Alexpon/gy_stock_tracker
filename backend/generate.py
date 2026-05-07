@@ -1,5 +1,6 @@
 import json
 import logging
+import math
 
 from backend import config, db
 
@@ -69,6 +70,15 @@ def format_picks(picks, ep_dates):
             except (json.JSONDecodeError, TypeError):
                 sparkline = []
 
+        def _clean(v):
+            if v is None:
+                return None
+            if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+                return None
+            return v
+
+        clean_spark = [s for s in (sparkline or []) if s is not None and not (isinstance(s, float) and math.isnan(s))]
+
         result.append({
             "ep": p["ep"],
             "ticker": p["ticker"],
@@ -78,16 +88,16 @@ def format_picks(picks, ep_dates):
             "confidence": p["confidence"],
             "sector": p.get("sector"),
             "quote": p.get("quote"),
-            "w1": p.get("w1"),
-            "w2": p.get("w2"),
-            "m1": p.get("m1"),
-            "q1": p.get("q1"),
-            "bench_w1": p.get("bench_w1"),
-            "bench_w2": p.get("bench_w2"),
-            "bench_m1": p.get("bench_m1"),
-            "bench_q1": p.get("bench_q1"),
-            "entry": p.get("entry"),
-            "sparkline": sparkline or [],
+            "w1": _clean(p.get("w1")),
+            "w2": _clean(p.get("w2")),
+            "m1": _clean(p.get("m1")),
+            "q1": _clean(p.get("q1")),
+            "bench_w1": _clean(p.get("bench_w1")),
+            "bench_w2": _clean(p.get("bench_w2")),
+            "bench_m1": _clean(p.get("bench_m1")),
+            "bench_q1": _clean(p.get("bench_q1")),
+            "entry": _clean(p.get("entry")),
+            "sparkline": clean_spark,
         })
     return result
 

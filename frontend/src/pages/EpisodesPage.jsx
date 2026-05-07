@@ -136,7 +136,7 @@ export function EpisodesPage() {
           </div>
 
           {/* Table rows */}
-          {episodes.slice(0, 20).map((ep, i) => (
+          {episodes.map((ep, i) => (
             <div key={ep.ep} style={{
               display: 'flex', padding: '12px 24px', alignItems: 'center',
               borderBottom: `1px solid ${C.border}`,
@@ -195,15 +195,6 @@ export function EpisodesPage() {
               </div>
             </div>
           ))}
-
-          {episodes.length > 20 && (
-            <div style={{
-              padding: '12px 24px', textAlign: 'center', fontSize: 12, color: C.textSubtle,
-              borderBottom: `1px solid ${C.border}`,
-            }}>
-              顯示前 20 集（共 {episodes.length} 集）
-            </div>
-          )}
 
           {episodes.length === 0 && (
             <div style={{ padding: 40, textAlign: 'center', color: C.textMuted, fontSize: 13 }}>

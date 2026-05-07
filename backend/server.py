@@ -1,17 +1,54 @@
+import asyncio
+import logging
 from contextlib import asynccontextmanager
+from datetime import datetime, time, timedelta
 from pathlib import Path
+
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
-from backend import db, rss, transcribe, extract, prices
+from backend import config, db, rss, transcribe, extract, prices
 from backend.generate import format_episodes, format_picks, compute_stats
 
+logger = logging.getLogger(__name__)
 _frontend_dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+
+
+def _next_run_time():
+    """Find the nearest upcoming time from SCHEDULE_TIMES."""
+    now = datetime.now()
+    candidates = []
+    for t in config.SCHEDULE_TIMES:
+        h, m = (int(x) for x in t.strip().split(":"))
+        candidate = now.replace(hour=h, minute=m, second=0, microsecond=0)
+        if candidate <= now:
+            candidate += timedelta(days=1)
+        candidates.append(candidate)
+    return min(candidates)
+
+
+async def _daily_backfill():
+    """Background task: run backfill + regenerate data at SCHEDULE_TIMES daily."""
+    while True:
+        target = _next_run_time()
+        wait = (target - datetime.now()).total_seconds()
+        logger.info("Next backfill scheduled at %s (in %.0f seconds)", target, wait)
+        await asyncio.sleep(wait)
+        try:
+            logger.info("Starting daily backfill...")
+            await asyncio.to_thread(prices.backfill_all)
+            from backend.generate import write_data_js
+            await asyncio.to_thread(write_data_js)
+            logger.info("Daily backfill complete")
+        except Exception:
+            logger.exception("Daily backfill failed")
 
 
 @asynccontextmanager
 async def lifespan(app):
     db.init_db()
+    task = asyncio.create_task(_daily_backfill())
     yield
+    task.cancel()
 
 
 app = FastAPI(title="Gooaye API", lifespan=lifespan)
@@ -52,14 +89,18 @@ def list_episodes():
 
 @app.post("/api/scan")
 def scan_episodes():
-    new_episodes = rss.check_new()
+    try:
+        new_episodes = rss.check_new()
+    except Exception as e:
+        logger.exception("RSS scan failed")
+        return {"new_episodes": [], "total_new": 0, "error": str(e)}
     result = []
     for ep_info in new_episodes:
+        audio_url = ep_info.get("rss_url", "")
         db.insert_episode(
             ep_info["ep"], ep_info["title"], ep_info["date"],
-            ep_info.get("duration"), ep_info.get("audio_url"),
+            ep_info.get("duration"), audio_url,
         )
-        rss.download_audio(ep_info["ep"], ep_info["audio_url"])
         result.append({"ep": ep_info["ep"], "title": ep_info["title"]})
     return {"new_episodes": result, "total_new": len(result)}
 
@@ -74,8 +115,17 @@ def process_episode(ep: int):
     pipeline = []
 
     if episode["transcript"] is None:
+        if not episode.get("audio_path"):
+            audio_url = episode.get("rss_url", "")
+            if audio_url:
+                pipeline.append(("download", lambda: rss.download_audio(ep, audio_url)))
+            else:
+                steps["download"] = "skipped"
+        else:
+            steps["download"] = "skipped"
         pipeline.append(("stt", lambda: transcribe.run(ep)))
     else:
+        steps["download"] = "skipped"
         steps["stt"] = "skipped"
 
     existing_picks = db.get_picks_for_episode(ep)
