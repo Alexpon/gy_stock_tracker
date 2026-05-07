@@ -4,6 +4,8 @@ import { StatCard } from '../components/shared/StatCard.jsx';
 
 export function EpisodesPage() {
   const [episodes, setEpisodes] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [completed, setCompleted] = useState(0);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
   const [processing, setProcessing] = useState(null);
@@ -15,6 +17,8 @@ export function EpisodesPage() {
       const res = await fetch('/api/episodes');
       const data = await res.json();
       setEpisodes(data.episodes);
+      setTotal(data.total ?? data.episodes.length);
+      setCompleted(data.completed ?? 0);
       setError(null);
     } catch {
       setError('無法連線到 API server');
@@ -61,8 +65,7 @@ export function EpisodesPage() {
     }
   };
 
-  const completed = episodes.filter(e => e.status === 'completed').length;
-  const pending = episodes.length - completed;
+  const pending = total - completed;
 
   if (error) {
     return (
@@ -106,7 +109,7 @@ export function EpisodesPage() {
       <div style={{
         display: 'flex', borderBottom: `1px solid ${C.border}`, background: C.surface,
       }}>
-        <StatCard label="總集數" value={loading ? '—' : episodes.length} />
+        <StatCard label="總集數" value={loading ? '—' : total} />
         <StatCard label="已完成" value={loading ? '—' : completed} />
         <StatCard label="待處理" value={loading ? '—' : pending}
           sub={pending > 0 ? '需要處理' : null} subKind={pending > 0 ? 'down' : null} />
