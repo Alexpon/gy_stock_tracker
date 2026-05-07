@@ -65,12 +65,13 @@ def calculate_returns(ticker, market, entry_date_str, entry_price):
         else:
             returns[period] = None
 
-    closes = data["Close"].values.tolist()
+    import math
+    closes = [float(c) for c in data["Close"].values.tolist() if not (isinstance(c, float) and math.isnan(c))]
     if len(closes) >= 24:
         indices = [int(i * (len(closes) - 1) / 23) for i in range(24)]
-        sparkline = [round(float(closes[i]), 2) for i in indices]
+        sparkline = [round(closes[i], 2) for i in indices]
     else:
-        sparkline = [round(float(c), 2) for c in closes]
+        sparkline = [round(c, 2) for c in closes]
 
     returns["sparkline"] = sparkline
     return returns
@@ -86,7 +87,7 @@ def calculate_bench_returns(market, entry_date_str):
         return {"bench_w1": None, "bench_w2": None, "bench_m1": None, "bench_q1": None}
     if isinstance(data.columns, pd.MultiIndex):
         data = data.droplevel(1, axis=1)
-    entry = float(data["Close"].iloc[0])
+    entry = float(data["Open"].iloc[0])
     results = {}
     for period, days in RETURN_PERIODS:
         if len(data) >= days:

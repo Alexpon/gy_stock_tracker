@@ -16,3 +16,13 @@ export function fmtPrice(n) {
   if (n >= 1000) return n.toLocaleString('en-US', { maximumFractionDigits: 2 });
   return n.toFixed(2);
 }
+
+export const PERIOD_DAYS = { w1: 5, w2: 10, m1: 21, q1: 63 };
+
+export const DEFAULT_CONFIG = {
+  followOnly: 'doing',
+  capitalPerEpisode: 10000,
+  entryDelay: 0,
+  showBenchOverlay: true,
+  actionFollow: 'all',
+};
