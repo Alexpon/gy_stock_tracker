@@ -52,7 +52,7 @@ def test_extract_picks(mock_client_cls, tmp_db):
     db.insert_episode(ep=542, title="測試", date="2026-04-14")
     db.update_episode_transcript(542, json.dumps(SAMPLE_TRANSCRIPT))
 
-    picks = extract.run(542)
+    picks, sectors = extract.run(542)
 
     assert len(picks) == 2
     assert picks[0]["ticker"] == "AVGO"
