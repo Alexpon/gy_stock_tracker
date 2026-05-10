@@ -102,10 +102,32 @@ def format_picks(picks, ep_dates):
     return result
 
 
+def format_sectors(sectors, ep_dates):
+    result = []
+    for s in sectors:
+        tickers = s["tickers"]
+        if isinstance(tickers, str):
+            try:
+                tickers = json.loads(tickers)
+            except (json.JSONDecodeError, TypeError):
+                tickers = []
+
+        result.append({
+            "ep": s["ep"],
+            "name": s["name"],
+            "sentiment": s["sentiment"],
+            "quote": s.get("quote"),
+            "tickers": tickers or [],
+            "mention_date": ep_dates.get(s["ep"], ""),
+        })
+    return result
+
+
 def write_data_js():
     episodes = db.get_latest_episodes(10)
     ep_list = [e["ep"] for e in episodes]
     picks = db.get_picks_for_episodes(ep_list)
+    sectors = db.get_sectors_for_episodes(ep_list)
 
     ep_dates = {e["ep"]: e["date"] for e in episodes}
 
@@ -115,6 +137,7 @@ def write_data_js():
     data = {
         "episodes": format_episodes(episodes),
         "picks": format_picks(picks, ep_dates),
+        "sectors": format_sectors(sectors, ep_dates),
         "stats": {
             "us": compute_stats(us_picks, "us"),
             "tw": compute_stats(tw_picks, "tw"),
@@ -123,7 +146,7 @@ def write_data_js():
 
     js = f"window.GOOAYE_DATA = {json.dumps(data, ensure_ascii=False, indent=2)};\n"
     config.DATA_JS_PATH.write_text(js, encoding="utf-8")
-    logger.info("Wrote data.js with %d episodes, %d picks", len(episodes), len(picks))
+    logger.info("Wrote data.js with %d episodes, %d picks, %d sectors", len(episodes), len(picks), len(sectors))
 
 
 if __name__ == "__main__":

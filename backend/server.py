@@ -7,7 +7,7 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from backend import config, db, rss, transcribe, extract, prices
-from backend.generate import format_episodes, format_picks, compute_stats
+from backend.generate import format_episodes, format_picks, format_sectors, compute_stats
 
 logger = logging.getLogger(__name__)
 _frontend_dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"
@@ -176,6 +176,7 @@ def get_data():
 
     ep_list = [e["ep"] for e in episodes]
     picks = db.get_picks_for_episodes(ep_list)
+    sectors = db.get_sectors_for_episodes(ep_list)
     ep_dates = {e["ep"]: e["date"] for e in episodes}
 
     formatted_eps = format_episodes(episodes)
@@ -187,6 +188,7 @@ def get_data():
     return {
         "episodes": formatted_eps,
         "picks": formatted_picks,
+        "sectors": format_sectors(sectors, ep_dates),
         "stats": {
             "us": compute_stats(us_picks, "us"),
             "tw": compute_stats(tw_picks, "tw"),
