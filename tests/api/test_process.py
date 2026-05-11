@@ -56,6 +56,7 @@ def test_process_skips_extract_when_picks_exist(client):
     db.insert_episode(802, "EP802", "2026-06-03")
     db.update_episode_transcript(802, json.dumps([{"text": "t", "start": 0, "end": 1}]))
     db.insert_pick(802, "AAPL", "Apple", "us", "mention")
+    db.insert_sector(802, "Tech", "bullish")
     with patch("backend.transcribe.run") as m_stt, \
          patch("backend.extract.run") as m_ext, \
          patch("backend.prices.fetch_new_picks") as m_pri:
@@ -101,6 +102,7 @@ def test_process_prices_failure(client):
     db.insert_episode(805, "EP805", "2026-06-06")
     db.update_episode_transcript(805, json.dumps([{"text": "t", "start": 0, "end": 1}]))
     db.insert_pick(805, "AAPL", "Apple", "us", "mention")
+    db.insert_sector(805, "Tech", "bullish")
     with patch("backend.prices.fetch_new_picks", side_effect=Exception("Yahoo Finance down")):
         resp = client.post("/api/process/805")
     data = resp.json()

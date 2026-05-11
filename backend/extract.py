@@ -200,12 +200,13 @@ def run(ep):
             pick.get("segment_indices", []), segments
         )
 
+        confidence = pick["confidence"] if pick["confidence"] in ("doing", "watching", "mention") else "mention"
         db.insert_pick(
             ep=ep,
             ticker=t,
             name=pick["name"],
             market=market,
-            confidence=pick["confidence"],
+            confidence=confidence,
             sector=pick.get("sector"),
             quote=pick.get("quote"),
             segment_start=seg_start,

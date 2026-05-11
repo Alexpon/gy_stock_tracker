@@ -134,6 +134,7 @@ export function EpisodesPage() {
             <div style={{ width: 80, textAlign: 'center' }}>日期</div>
             <div style={{ width: 50, textAlign: 'center' }}>STT</div>
             <div style={{ width: 50, textAlign: 'center' }}>股票</div>
+            <div style={{ width: 50, textAlign: 'center' }}>族群</div>
             <div style={{ width: 50, textAlign: 'center' }}>績效</div>
             <div style={{ width: 80, textAlign: 'center' }}>操作</div>
           </div>
@@ -171,6 +172,13 @@ export function EpisodesPage() {
                     : <span style={{ color: C.textSubtle }}>—</span>}
               </div>
               <div style={{ width: 50, textAlign: 'center', fontSize: 13 }}>
+                {ep.sectors_count > 0
+                  ? <span style={{ color: C.up }}>{ep.sectors_count}</span>
+                  : ep.picks_count > 0
+                    ? <span style={{ color: C.warn }}>✗</span>
+                    : <span style={{ color: C.textSubtle }}>—</span>}
+              </div>
+              <div style={{ width: 50, textAlign: 'center', fontSize: 13 }}>
                 {ep.has_prices
                   ? <span style={{ color: C.up }}>✓</span>
                   : ep.picks_count > 0
@@ -178,7 +186,7 @@ export function EpisodesPage() {
                     : <span style={{ color: C.textSubtle }}>—</span>}
               </div>
               <div style={{ width: 80, textAlign: 'center' }}>
-                {ep.status === 'completed' ? (
+                {ep.status === 'completed' && ep.sectors_count > 0 ? (
                   <span style={{ color: C.up, fontSize: 11, fontWeight: 600 }}>完成</span>
                 ) : (
                   <button
@@ -187,12 +195,15 @@ export function EpisodesPage() {
                     style={{
                       border: 'none', borderRadius: 4, padding: '4px 12px',
                       fontSize: 11, fontWeight: 600, cursor: processing !== null ? 'default' : 'pointer',
-                      background: processing === ep.ep ? C.surfaceAlt : C.accent,
+                      background: processing === ep.ep ? C.surfaceAlt
+                        : (ep.status === 'completed' ? C.warn : C.accent),
                       color: processing === ep.ep ? C.textMuted : '#fff',
                       fontFamily: 'var(--font-sans)',
                     }}
                   >
-                    {processing === ep.ep ? '處理中...' : '處理'}
+                    {processing === ep.ep ? '處理中...'
+                      : ep.status === 'completed' ? '補族群'
+                      : '處理'}
                   </button>
                 )}
               </div>

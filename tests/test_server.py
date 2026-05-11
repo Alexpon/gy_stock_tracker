@@ -18,6 +18,7 @@ def seeded_db(tmp_db):
     db.update_episode_transcript(630, json.dumps([{"text": "test", "start": 0, "end": 5}]))
     db.insert_pick(630, "2330", "台積電", "tw", "doing", sector="Semi")
     db.update_pick_prices(630, "2330", entry=580.0, w1=2.5, status="backfilling")
+    db.insert_sector(630, "Semi", "bullish")
     from backend.server import app
     return TestClient(app)
 

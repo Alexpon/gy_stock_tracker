@@ -1,11 +1,12 @@
 import { C } from '../../constants.js';
 
 export function Pill({ kind }) {
-  const s = {
+  const styles = {
     doing: { bg: C.accentBg, color: C.accent, label: '有在做' },
     watching: { bg: C.warnBg, color: C.warn, label: '觀察中' },
     mention: { bg: C.surfaceAlt, color: C.textMuted, label: '只是提到' },
-  }[kind];
+  };
+  const s = styles[kind] || styles.mention;
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 4,
