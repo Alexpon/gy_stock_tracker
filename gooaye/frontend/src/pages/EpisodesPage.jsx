@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { C } from '../constants.js';
 import { StatCard } from '../components/shared/StatCard.jsx';
+import { useProcessing } from '../ProcessingContext.jsx';
 
 export function EpisodesPage() {
   const [episodes, setEpisodes] = useState([]);
@@ -8,11 +9,12 @@ export function EpisodesPage() {
   const [completed, setCompleted] = useState(0);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
-  const [processing, setProcessing] = useState(null);
-  const [message, setMessage] = useState(null);
+  const [messages, setMessages] = useState([]);
   const [error, setError] = useState(null);
 
-  const fetchEpisodes = async () => {
+  const { jobs, activeCount, startProcess, clearFinished, onJobDone } = useProcessing();
+
+  const fetchEpisodes = useCallback(async () => {
     try {
       const res = await fetch('/api/episodes');
       const data = await res.json();
@@ -25,44 +27,40 @@ export function EpisodesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  useEffect(() => { fetchEpisodes(); }, []);
+  useEffect(() => { fetchEpisodes(); }, [fetchEpisodes]);
+
+  useEffect(() => {
+    return onJobDone((_ep, _success, msg) => {
+      setMessages(prev => [{ id: Date.now(), text: msg, isError: !_success }, ...prev].slice(0, 5));
+      fetchEpisodes();
+    });
+  }, [onJobDone, fetchEpisodes]);
 
   const handleScan = async () => {
     setScanning(true);
-    setMessage(null);
+    setMessages([]);
     try {
       const res = await fetch('/api/scan', { method: 'POST' });
       const data = await res.json();
-      setMessage(data.total_new > 0
-        ? `找到 ${data.total_new} 個新集數`
-        : '沒有找到新集數');
+      const text = data.total_new > 0 ? `找到 ${data.total_new} 個新集數` : '沒有找到新集數';
+      setMessages([{ id: Date.now(), text, isError: false }]);
       await fetchEpisodes();
     } catch {
-      setMessage('掃描失敗');
+      setMessages([{ id: Date.now(), text: '掃描失敗', isError: true }]);
     } finally {
       setScanning(false);
     }
   };
 
-  const handleProcess = async (ep) => {
-    setProcessing(ep);
-    setMessage(null);
-    try {
-      const res = await fetch(`/api/process/${ep}`, { method: 'POST' });
-      const data = await res.json();
-      if (data.success) {
-        setMessage(`EP${ep} 處理完成`);
-      } else {
-        setMessage(`EP${ep} 處理失敗: ${data.error}`);
-      }
-      await fetchEpisodes();
-    } catch {
-      setMessage(`EP${ep} 處理失敗`);
-    } finally {
-      setProcessing(null);
-    }
+  const handleProcess = (ep) => {
+    startProcess(ep);
+    setMessages(prev => [{ id: Date.now(), text: `EP${ep} 開始處理...`, isError: false }, ...prev].slice(0, 5));
+  };
+
+  const dismissMessage = (id) => {
+    setMessages(prev => prev.filter(m => m.id !== id));
   };
 
   const pending = total - completed;
@@ -86,20 +84,31 @@ export function EpisodesPage() {
         padding: '16px 24px', display: 'flex', alignItems: 'center',
         justifyContent: 'space-between', borderBottom: `1px solid ${C.border}`,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {message && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', flex: 1 }}>
+          {activeCount > 0 && (
             <span style={{
-              fontSize: 12, color: message.includes('失敗') ? C.down : C.up,
-              background: message.includes('失敗') ? C.downBg : C.upBg,
-              padding: '4px 10px', borderRadius: 4,
-            }}>{message}</span>
+              fontSize: 12, color: C.accent, background: C.accentBg,
+              padding: '4px 10px', borderRadius: 4, fontWeight: 600,
+            }}>
+              {activeCount} 個處理中...
+            </span>
           )}
+          {messages.map(m => (
+            <span key={m.id} onClick={() => dismissMessage(m.id)} style={{
+              fontSize: 12, cursor: 'pointer',
+              color: m.isError ? C.down : C.up,
+              background: m.isError ? C.downBg : C.upBg,
+              padding: '4px 10px', borderRadius: 4,
+            }}>
+              {m.text} ✕
+            </span>
+          ))}
         </div>
         <button onClick={handleScan} disabled={scanning} style={{
           border: 'none', background: C.text, color: '#fff',
           padding: '8px 16px', borderRadius: 6, fontSize: 12, fontWeight: 600,
           cursor: scanning ? 'default' : 'pointer', opacity: scanning ? 0.6 : 1,
-          fontFamily: 'var(--font-sans)',
+          fontFamily: 'var(--font-sans)', flexShrink: 0,
         }}>
           {scanning ? '掃描中...' : '掃描新集數'}
         </button>
@@ -113,6 +122,9 @@ export function EpisodesPage() {
         <StatCard label="已完成" value={loading ? '—' : completed} />
         <StatCard label="待處理" value={loading ? '—' : pending}
           sub={pending > 0 ? '需要處理' : null} subKind={pending > 0 ? 'down' : null} />
+        {activeCount > 0 && (
+          <StatCard label="處理中" value={activeCount} sub="平行處理" subKind="accent" />
+        )}
       </div>
 
       {/* Table */}
@@ -140,75 +152,88 @@ export function EpisodesPage() {
           </div>
 
           {/* Table rows */}
-          {episodes.map((ep, i) => (
-            <div key={ep.ep} style={{
-              display: 'flex', padding: '12px 24px', alignItems: 'center',
-              borderBottom: `1px solid ${C.border}`,
-              background: i % 2 === 0 ? C.surface : C.surfaceAlt,
-            }}>
-              <div style={{
-                width: 70, fontWeight: 700, fontFamily: 'var(--font-mono)',
-                color: C.text, fontSize: 13,
-              }}>EP{ep.ep}</div>
-              <div style={{
-                flex: 1, fontSize: 12, color: C.textMuted,
-                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                paddingRight: 12,
-              }}>{ep.title}</div>
-              <div style={{
-                width: 80, textAlign: 'center', fontSize: 11,
-                fontFamily: 'var(--font-mono)', color: C.textSubtle,
-              }}>{ep.date?.slice(5)}</div>
-              <div style={{ width: 50, textAlign: 'center', fontSize: 13 }}>
-                {ep.has_transcript
-                  ? <span style={{ color: C.up }}>✓</span>
-                  : <span style={{ color: C.warn }}>✗</span>}
+          {episodes.map((ep, i) => {
+            const job = jobs.get(ep.ep);
+            const isProcessing = job?.status === 'processing';
+            const isDone = job?.status === 'done';
+            const isError = job?.status === 'error';
+
+            return (
+              <div key={ep.ep} style={{
+                display: 'flex', padding: '12px 24px', alignItems: 'center',
+                borderBottom: `1px solid ${C.border}`,
+                background: isProcessing ? C.accentBg
+                  : isDone ? C.upBg
+                  : isError ? C.downBg
+                  : i % 2 === 0 ? C.surface : C.surfaceAlt,
+                transition: 'background 0.3s',
+              }}>
+                <div style={{
+                  width: 70, fontWeight: 700, fontFamily: 'var(--font-mono)',
+                  color: C.text, fontSize: 13,
+                }}>EP{ep.ep}</div>
+                <div style={{
+                  flex: 1, fontSize: 12, color: C.textMuted,
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  paddingRight: 12,
+                }}>{ep.title}</div>
+                <div style={{
+                  width: 80, textAlign: 'center', fontSize: 11,
+                  fontFamily: 'var(--font-mono)', color: C.textSubtle,
+                }}>{ep.date?.slice(5)}</div>
+                <div style={{ width: 50, textAlign: 'center', fontSize: 13 }}>
+                  {ep.has_transcript
+                    ? <span style={{ color: C.up }}>✓</span>
+                    : <span style={{ color: C.warn }}>✗</span>}
+                </div>
+                <div style={{ width: 50, textAlign: 'center', fontSize: 13 }}>
+                  {ep.picks_count > 0
+                    ? <span style={{ color: C.up }}>{ep.picks_count}</span>
+                    : ep.has_transcript
+                      ? <span style={{ color: C.warn }}>✗</span>
+                      : <span style={{ color: C.textSubtle }}>—</span>}
+                </div>
+                <div style={{ width: 50, textAlign: 'center', fontSize: 13 }}>
+                  {ep.sectors_count > 0
+                    ? <span style={{ color: C.up }}>{ep.sectors_count}</span>
+                    : ep.picks_count > 0
+                      ? <span style={{ color: C.warn }}>✗</span>
+                      : <span style={{ color: C.textSubtle }}>—</span>}
+                </div>
+                <div style={{ width: 50, textAlign: 'center', fontSize: 13 }}>
+                  {ep.has_prices
+                    ? <span style={{ color: C.up }}>✓</span>
+                    : ep.picks_count > 0
+                      ? <span style={{ color: C.warn }}>✗</span>
+                      : <span style={{ color: C.textSubtle }}>—</span>}
+                </div>
+                <div style={{ width: 80, textAlign: 'center' }}>
+                  {isProcessing ? (
+                    <span style={{
+                      fontSize: 11, fontWeight: 600, color: C.accent,
+                      animation: 'pulse 1.5s infinite',
+                    }}>處理中...</span>
+                  ) : (ep.status === 'completed' && ep.sectors_count > 0 && !isDone && !isError) ? (
+                    <span style={{ color: C.up, fontSize: 11, fontWeight: 600 }}>完成</span>
+                  ) : (
+                    <button
+                      onClick={() => handleProcess(ep.ep)}
+                      disabled={isProcessing}
+                      style={{
+                        border: 'none', borderRadius: 4, padding: '4px 12px',
+                        fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                        background: ep.status === 'completed' ? C.warn : C.accent,
+                        color: '#fff',
+                        fontFamily: 'var(--font-sans)',
+                      }}
+                    >
+                      {ep.status === 'completed' ? '補族群' : '處理'}
+                    </button>
+                  )}
+                </div>
               </div>
-              <div style={{ width: 50, textAlign: 'center', fontSize: 13 }}>
-                {ep.picks_count > 0
-                  ? <span style={{ color: C.up }}>{ep.picks_count}</span>
-                  : ep.has_transcript
-                    ? <span style={{ color: C.warn }}>✗</span>
-                    : <span style={{ color: C.textSubtle }}>—</span>}
-              </div>
-              <div style={{ width: 50, textAlign: 'center', fontSize: 13 }}>
-                {ep.sectors_count > 0
-                  ? <span style={{ color: C.up }}>{ep.sectors_count}</span>
-                  : ep.picks_count > 0
-                    ? <span style={{ color: C.warn }}>✗</span>
-                    : <span style={{ color: C.textSubtle }}>—</span>}
-              </div>
-              <div style={{ width: 50, textAlign: 'center', fontSize: 13 }}>
-                {ep.has_prices
-                  ? <span style={{ color: C.up }}>✓</span>
-                  : ep.picks_count > 0
-                    ? <span style={{ color: C.warn }}>✗</span>
-                    : <span style={{ color: C.textSubtle }}>—</span>}
-              </div>
-              <div style={{ width: 80, textAlign: 'center' }}>
-                {ep.status === 'completed' && ep.sectors_count > 0 ? (
-                  <span style={{ color: C.up, fontSize: 11, fontWeight: 600 }}>完成</span>
-                ) : (
-                  <button
-                    onClick={() => handleProcess(ep.ep)}
-                    disabled={processing !== null}
-                    style={{
-                      border: 'none', borderRadius: 4, padding: '4px 12px',
-                      fontSize: 11, fontWeight: 600, cursor: processing !== null ? 'default' : 'pointer',
-                      background: processing === ep.ep ? C.surfaceAlt
-                        : (ep.status === 'completed' ? C.warn : C.accent),
-                      color: processing === ep.ep ? C.textMuted : '#fff',
-                      fontFamily: 'var(--font-sans)',
-                    }}
-                  >
-                    {processing === ep.ep ? '處理中...'
-                      : ep.status === 'completed' ? '補族群'
-                      : '處理'}
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
+            );
+          })}
 
           {episodes.length === 0 && (
             <div style={{ padding: 40, textAlign: 'center', color: C.textMuted, fontSize: 13 }}>

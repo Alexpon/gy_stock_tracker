@@ -122,8 +122,12 @@ function mergeSectors(sectors) {
 
 function SectorCard({ group }) {
   const [open, setOpen] = useState(false);
+  const sentColor = group.sentiment === 'bullish' ? C.up
+    : group.sentiment === 'bearish' ? C.down : C.warn;
+  const sentBg = group.sentiment === 'bullish' ? C.upBg
+    : group.sentiment === 'bearish' ? C.downBg : C.warnBg;
   const truncatedQuote = group.quote
-    ? group.quote.length > 30 ? group.quote.slice(0, 30) + '…' : group.quote
+    ? group.quote.length > 40 ? group.quote.slice(0, 40) + '…' : group.quote
     : null;
 
   return (
@@ -131,49 +135,58 @@ function SectorCard({ group }) {
       style={{
         background: C.surface,
         border: `1px solid ${C.border}`,
-        borderRadius: 8,
-        padding: '14px 16px',
+        borderRadius: 10,
+        padding: '16px',
         cursor: 'pointer',
-        transition: 'border-color 0.15s',
-        minWidth: 180,
-        flex: '1 1 180px',
-        maxWidth: 280,
+        transition: 'border-color 0.15s, box-shadow 0.15s',
+        borderLeft: `3px solid ${sentColor}`,
+        display: 'flex',
+        flexDirection: 'column',
       }}
       onClick={() => setOpen(!open)}
-      onMouseEnter={e => { e.currentTarget.style.borderColor = C.borderStrong; }}
-      onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; }}
+      onMouseEnter={e => {
+        e.currentTarget.style.borderColor = C.borderStrong;
+        e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)';
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.borderColor = C.border;
+        e.currentTarget.style.boxShadow = 'none';
+      }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
         <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{group.name}</span>
         <SentimentPill sentiment={group.sentiment} />
       </div>
-      <div style={{ fontSize: 10, color: C.textSubtle, fontFamily: 'var(--font-mono)', marginBottom: 6 }}>
+      <div style={{ fontSize: 10, color: C.textSubtle, fontFamily: 'var(--font-mono)', marginBottom: 8 }}>
         EP {group.latest.ep}
         {group.mentionCount > 1 && ` · 共 ${group.mentionCount} 集提及`}
       </div>
       {truncatedQuote && (
-        <div style={{ fontSize: 12, color: C.textMuted, fontStyle: 'italic', lineHeight: 1.4 }}>
+        <div style={{
+          fontSize: 12, color: C.textMuted, fontStyle: 'italic', lineHeight: 1.5,
+          background: C.surfaceAlt, borderRadius: 6, padding: '8px 10px', marginBottom: 8,
+        }}>
           「{truncatedQuote}」
         </div>
       )}
       {group.tickers.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 8 }}>
-          {group.tickers.slice(0, 4).map(t => (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 'auto' }}>
+          {group.tickers.slice(0, 5).map(t => (
             <span key={t} style={{
               fontSize: 10, fontFamily: 'var(--font-mono)', fontWeight: 600,
-              padding: '1px 6px', borderRadius: 3,
-              background: C.surfaceAlt, color: C.textMuted,
+              padding: '2px 7px', borderRadius: 4,
+              background: sentBg, color: sentColor,
             }}>{t}</span>
           ))}
-          {group.tickers.length > 4 && (
-            <span style={{ fontSize: 10, color: C.textSubtle }}>+{group.tickers.length - 4}</span>
+          {group.tickers.length > 5 && (
+            <span style={{ fontSize: 10, color: C.textSubtle, alignSelf: 'center' }}>+{group.tickers.length - 5}</span>
           )}
         </div>
       )}
 
       {open && (
         <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${C.border}` }}>
-          {group.quote && group.quote.length > 30 && (
+          {group.quote && group.quote.length > 40 && (
             <div style={{ fontSize: 12, color: C.textMuted, fontStyle: 'italic', lineHeight: 1.5, marginBottom: 10 }}>
               「{group.quote}」
             </div>
@@ -511,7 +524,11 @@ export function ActionPage({ market, config, data }) {
           }}>
             族群觀點 · 最新 4 集
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+            gap: 12,
+          }}>
             {sectorGroups.map(g => (
               <SectorCard key={g.name} group={g} />
             ))}

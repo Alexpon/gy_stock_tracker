@@ -5,6 +5,7 @@ import { Sidebar } from './components/Sidebar.jsx';
 import { ActionPage } from './pages/ActionPage.jsx';
 import { AnalysisPage } from './pages/AnalysisPage.jsx';
 import { EpisodesPage } from './pages/EpisodesPage.jsx';
+import { ProcessingProvider, useProcessing } from './ProcessingContext.jsx';
 
 const DEFAULT_CONFIG = {
   actionFollow: 'all',
@@ -14,6 +15,15 @@ const DEFAULT_CONFIG = {
 };
 
 export default function App() {
+  return (
+    <ProcessingProvider>
+      <AppInner />
+    </ProcessingProvider>
+  );
+}
+
+function AppInner() {
+  const { activeCount } = useProcessing();
   const [market, setMarket] = useState('us');
   const [route, setRoute] = useState(() => localStorage.getItem('gooaye_route') || 'action');
   const [data, setData] = useState({ episodes: [], picks: [], stats: { us: {}, tw: {} } });
@@ -39,7 +49,7 @@ export default function App() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: C.bg }}>
-      <Sidebar route={route} setRoute={setRoute} />
+      <Sidebar route={route} setRoute={setRoute} processingCount={activeCount} />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <Header market={market} setMarket={setMarket} route={route}
           period={period} setPeriod={setPeriod} />

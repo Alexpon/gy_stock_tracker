@@ -1,6 +1,6 @@
 import { C } from '../constants.js';
 
-export function Sidebar({ route, setRoute }) {
+export function Sidebar({ route, setRoute, processingCount = 0 }) {
   const items = [
     { k: 'action', label: 'Action', sub: '決策', desc: '最新 4 集 · 該跟哪幾檔' },
     { k: 'analysis', label: 'Analysis', sub: '分析', desc: '歷史回測 · 命中率' },
@@ -42,9 +42,17 @@ export function Sidebar({ route, setRoute }) {
               color: active ? '#fff' : C.text,
               fontFamily: 'var(--font-sans)',
             }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 2 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
                 <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: '-0.005em' }}>{it.label}</span>
                 <span style={{ fontSize: 11, opacity: active ? 0.65 : 0.55 }}>{it.sub}</span>
+                {it.k === 'episodes' && processingCount > 0 && (
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, color: '#fff', background: C.accent,
+                    borderRadius: 8, padding: '1px 6px', minWidth: 18, textAlign: 'center',
+                    lineHeight: '16px', marginLeft: 'auto',
+                    animation: 'pulse 2s infinite',
+                  }}>{processingCount}</span>
+                )}
               </div>
               <div style={{ fontSize: 10.5, opacity: active ? 0.7 : 0.6, lineHeight: 1.4 }}>{it.desc}</div>
             </button>
