@@ -1,5 +1,6 @@
 import json
 import logging
+import math
 
 from backend import config, db
 
@@ -69,6 +70,15 @@ def format_picks(picks, ep_dates):
             except (json.JSONDecodeError, TypeError):
                 sparkline = []
 
+        def _clean(v):
+            if v is None:
+                return None
+            if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+                return None
+            return v
+
+        clean_spark = [s for s in (sparkline or []) if s is not None and not (isinstance(s, float) and math.isnan(s))]
+
         result.append({
             "ep": p["ep"],
             "ticker": p["ticker"],
@@ -78,16 +88,37 @@ def format_picks(picks, ep_dates):
             "confidence": p["confidence"],
             "sector": p.get("sector"),
             "quote": p.get("quote"),
-            "w1": p.get("w1"),
-            "w2": p.get("w2"),
-            "m1": p.get("m1"),
-            "q1": p.get("q1"),
-            "bench_w1": p.get("bench_w1"),
-            "bench_w2": p.get("bench_w2"),
-            "bench_m1": p.get("bench_m1"),
-            "bench_q1": p.get("bench_q1"),
-            "entry": p.get("entry"),
-            "sparkline": sparkline or [],
+            "w1": _clean(p.get("w1")),
+            "w2": _clean(p.get("w2")),
+            "m1": _clean(p.get("m1")),
+            "q1": _clean(p.get("q1")),
+            "bench_w1": _clean(p.get("bench_w1")),
+            "bench_w2": _clean(p.get("bench_w2")),
+            "bench_m1": _clean(p.get("bench_m1")),
+            "bench_q1": _clean(p.get("bench_q1")),
+            "entry": _clean(p.get("entry")),
+            "sparkline": clean_spark,
+        })
+    return result
+
+
+def format_sectors(sectors, ep_dates):
+    result = []
+    for s in sectors:
+        tickers = s["tickers"]
+        if isinstance(tickers, str):
+            try:
+                tickers = json.loads(tickers)
+            except (json.JSONDecodeError, TypeError):
+                tickers = []
+
+        result.append({
+            "ep": s["ep"],
+            "name": s["name"],
+            "sentiment": s["sentiment"],
+            "quote": s.get("quote"),
+            "tickers": tickers or [],
+            "mention_date": ep_dates.get(s["ep"], ""),
         })
     return result
 
@@ -96,6 +127,7 @@ def write_data_js():
     episodes = db.get_latest_episodes(10)
     ep_list = [e["ep"] for e in episodes]
     picks = db.get_picks_for_episodes(ep_list)
+    sectors = db.get_sectors_for_episodes(ep_list)
 
     ep_dates = {e["ep"]: e["date"] for e in episodes}
 
@@ -105,6 +137,7 @@ def write_data_js():
     data = {
         "episodes": format_episodes(episodes),
         "picks": format_picks(picks, ep_dates),
+        "sectors": format_sectors(sectors, ep_dates),
         "stats": {
             "us": compute_stats(us_picks, "us"),
             "tw": compute_stats(tw_picks, "tw"),
@@ -113,7 +146,7 @@ def write_data_js():
 
     js = f"window.GOOAYE_DATA = {json.dumps(data, ensure_ascii=False, indent=2)};\n"
     config.DATA_JS_PATH.write_text(js, encoding="utf-8")
-    logger.info("Wrote data.js with %d episodes, %d picks", len(episodes), len(picks))
+    logger.info("Wrote data.js with %d episodes, %d picks, %d sectors", len(episodes), len(picks), len(sectors))
 
 
 if __name__ == "__main__":

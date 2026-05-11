@@ -67,7 +67,7 @@ def _transcribe_chunk(chunk_path, phrase_list, time_offset, max_retries=3):
                 seg["start"] = round(seg["start"] + time_offset, 2)
                 seg["end"] = round(seg["end"] + time_offset, 2)
             return segments
-        except (requests.Timeout, requests.ConnectionError) as e:
+        except requests.RequestException as e:
             logger.warning("Chunk at offset %.0fs: attempt %d/%d failed: %s", time_offset, attempt, max_retries, e)
             if attempt == max_retries:
                 logger.error("Chunk at offset %.0fs: all retries exhausted, skipping", time_offset)

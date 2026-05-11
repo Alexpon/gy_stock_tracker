@@ -23,7 +23,7 @@ AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION", "2024-12-01-pre
 RSS_URL = os.getenv("RSS_URL", "")
 
 # Schedule
-SCHEDULE_TIME = os.getenv("SCHEDULE_TIME", "18:00")
+SCHEDULE_TIMES = os.getenv("SCHEDULE_TIMES", "06:00,16:00").split(",")
 
 # Paths
 DB_PATH = BASE_DIR / "data" / "gooaye.db"

@@ -46,6 +46,19 @@ def init_db():
             created_at    TEXT DEFAULT (datetime('now')),
             UNIQUE(ep, ticker)
         );
+
+        CREATE TABLE IF NOT EXISTS sectors (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            ep            INTEGER NOT NULL REFERENCES episodes(ep),
+            name          TEXT NOT NULL,
+            sentiment     TEXT NOT NULL,
+            quote         TEXT,
+            tickers       TEXT,
+            segment_start REAL,
+            segment_end   REAL,
+            created_at    TEXT DEFAULT (datetime('now')),
+            UNIQUE(ep, name)
+        );
     """)
     conn.close()
 
@@ -110,6 +123,22 @@ def insert_pick(ep, ticker, name, market, confidence, sector=None, quote=None,
     conn.close()
 
 
+def insert_sector(ep, name, sentiment, quote=None, tickers=None,
+                  segment_start=None, segment_end=None):
+    conn = _connect()
+    tickers_json = json.dumps(tickers, ensure_ascii=False) if tickers else None
+    conn.execute("""
+        INSERT INTO sectors (ep, name, sentiment, quote, tickers, segment_start, segment_end)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(ep, name) DO UPDATE SET
+            sentiment=excluded.sentiment, quote=excluded.quote,
+            tickers=excluded.tickers,
+            segment_start=excluded.segment_start, segment_end=excluded.segment_end
+    """, (ep, name, sentiment, quote, tickers_json, segment_start, segment_end))
+    conn.commit()
+    conn.close()
+
+
 def update_pick_prices(ep, ticker, entry=None, w1=None, w2=None, m1=None, q1=None,
                        bench_w1=None, bench_w2=None, bench_m1=None, bench_q1=None,
                        sparkline=None, status=None):
@@ -153,6 +182,19 @@ def get_picks_for_episodes(ep_list):
     return [dict(r) for r in rows]
 
 
+def get_sectors_for_episodes(ep_list):
+    if not ep_list:
+        return []
+    conn = _connect()
+    placeholders = ",".join("?" * len(ep_list))
+    rows = conn.execute(
+        f"SELECT * FROM sectors WHERE ep IN ({placeholders}) ORDER BY ep DESC, id",
+        ep_list,
+    ).fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
 def get_pending_picks():
     conn = _connect()
     rows = conn.execute(
@@ -170,3 +212,10 @@ def get_latest_episodes(n=10):
     ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+def get_episode_count():
+    conn = _connect()
+    row = conn.execute("SELECT COUNT(*) as cnt FROM episodes").fetchone()
+    conn.close()
+    return row["cnt"]
