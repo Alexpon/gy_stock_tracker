@@ -43,7 +43,7 @@ def test_episodes_with_data(seeded_db):
     assert eps[1]["status"] == "partial"
     assert eps[1]["has_transcript"] is True
     assert eps[1]["picks_count"] == 1
-    assert eps[1]["has_prices"] is False
+    assert eps[1]["has_prices"] is True
 
 
 def test_scan_no_new(client):
