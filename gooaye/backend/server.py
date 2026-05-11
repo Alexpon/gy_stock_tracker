@@ -67,6 +67,8 @@ def list_episodes():
         has_prices = picks_count > 0 and any(
             p["entry"] is not None for p in picks
         )
+        sectors = db.get_sectors_for_episodes([ep_num])
+        sectors_count = len(sectors)
 
         if has_transcript and extracted and (picks_count == 0 or has_prices):
             status = "completed"
@@ -82,6 +84,7 @@ def list_episodes():
             "duration": ep_row["duration"],
             "has_transcript": has_transcript,
             "picks_count": picks_count,
+            "sectors_count": sectors_count,
             "has_prices": has_prices,
             "status": status,
         })
@@ -147,7 +150,11 @@ def process_episode(ep: int):
         steps["stt"] = "skipped"
 
     existing_picks = db.get_picks_for_episode(ep)
-    if len(existing_picks) == 0 and (need_stt or not episode.get("market_focus")):
+    existing_sectors = db.get_sectors_for_episodes([ep])
+    need_extract = (
+        len(existing_picks) == 0 and (need_stt or not episode.get("market_focus"))
+    ) or (len(existing_picks) > 0 and len(existing_sectors) == 0)
+    if need_extract:
         pipeline.append(("extract", lambda: extract.run(ep)))
     else:
         steps["extract"] = "skipped"

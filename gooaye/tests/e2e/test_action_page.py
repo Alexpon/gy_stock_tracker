@@ -54,7 +54,7 @@ class TestActionTW:
         assert stat.locator("text=EP 654").is_visible()
 
     def test_quote_shown_on_expand(self):
-        self.page.locator("text=2330").first.click()
+        self.page.locator("text=台積電").first.click()
         self.page.wait_for_timeout(300)
         assert self.page.locator("text=台積電在接下來的蓋的狀態是給的非常好啦").is_visible()
 

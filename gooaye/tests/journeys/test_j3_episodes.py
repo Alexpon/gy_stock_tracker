@@ -40,7 +40,7 @@ def test_episodes_full_journey(app):
     expect(page.locator("text=需要處理")).to_be_visible()
 
     # ── Step 4: Table headers ──
-    for header in ["集數", "日期", "STT", "股票", "績效", "操作"]:
+    for header in ["集數", "日期", "STT", "股票", "族群", "績效", "操作"]:
         expect(page.locator(f"text={header}").first).to_be_visible()
 
     # ── Step 5: EP654 row verification ──

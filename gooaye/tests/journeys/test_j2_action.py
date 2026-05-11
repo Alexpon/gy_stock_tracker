@@ -56,8 +56,8 @@ def test_action_full_journey(app):
     expect(page.locator("text=鴻海").first).to_be_visible()
     expect(page.locator("text=矽力-KY").first).to_be_visible()
 
-    # 2e. Quotes require expand — click 2330 to see quote
-    page.locator("text=2330").first.click()
+    # 2e. Quotes require expand — click 台積電 row (not sector card ticker tag)
+    page.locator("text=台積電").first.click()
     page.wait_for_timeout(300)
     expect(page.locator("text=台積電在接下來的蓋的狀態是給的非常好啦")).to_be_visible()
 

@@ -76,6 +76,11 @@ def _seed_db():
                           bench_w1=-0.1, bench_w2=-0.3, bench_m1=-0.8,
                           sparkline="[69.89,68]", status="backfilling")
 
+    # --- Sector groups ---
+    db.insert_sector(654, "ASIC", "bullish", quote="ASIC 族群表現不錯", tickers=["2330"])
+    db.insert_sector(654, "散熱", "neutral", quote="散熱還在觀察")
+    db.insert_sector(630, "ASIC", "bullish", quote="ASIC 持續看好", tickers=["2330", "2454"])
+
 
 @pytest.fixture(scope="session")
 def server_url(tmp_path_factory):
