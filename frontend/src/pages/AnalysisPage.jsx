@@ -87,7 +87,7 @@ function EpList({ episodes, picks, market, onPickEp, activeEp }) {
 
 // ─── LatestEpisode ────────────────────────────────────────
 
-function LatestEpisode({ ep, picks, period, market, onSelect }) {
+function LatestEpisode({ ep, picks, market, onSelect }) {
   const filtered = picks.filter(p => p.ep === ep.ep && p.market === market);
   if (filtered.length === 0) return null;
   return (
@@ -102,7 +102,8 @@ function LatestEpisode({ ep, picks, period, market, onSelect }) {
         <div style={{ fontSize: 15, fontWeight: 600, color: C.text, marginBottom: 12, letterSpacing: '-0.01em' }}>「{ep.title}」</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
           {filtered.map(p => {
-            const val = p[period] ?? 0;
+            const rt = calcReturnToday(p);
+            const val = rt ? rt.returnPct : 0;
             const positive = val >= 0;
             return (
               <button key={p.ticker} onClick={() => onSelect(p)} style={{
@@ -119,8 +120,12 @@ function LatestEpisode({ ep, picks, period, market, onSelect }) {
                 </div>
                 <Spark data={p.sparkline} width={64} height={24} positive={positive} />
                 <div style={{ textAlign: 'right', minWidth: 60 }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-mono)', color: positive ? C.up : C.down, fontVariantNumeric: 'tabular-nums' }}>{fmt(val)}</div>
-                  <div style={{ fontSize: 10, color: C.textSubtle, fontFamily: 'var(--font-mono)', textTransform: 'uppercase' }}>{period.toUpperCase()}</div>
+                  {rt ? (
+                    <>
+                      <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-mono)', color: positive ? C.up : C.down, fontVariantNumeric: 'tabular-nums' }}>{fmt(val)}</div>
+                      <div style={{ fontSize: 10, color: C.textSubtle, fontFamily: 'var(--font-mono)' }}>{rt.holdingDays} 天</div>
+                    </>
+                  ) : <span style={{ color: C.textSubtle, fontSize: 13 }}>—</span>}
                 </div>
               </button>
             );
@@ -252,8 +257,7 @@ function PicksTable({ picks, episodes, market, onSelect, selected }) {
 
 // ─── StrategyTable ────────────────────────────────────────
 
-function StrategyTable({ episodes, picks, market, period, config }) {
-  // 每集的策略報酬 = 該集符合條件個股的等權平均報酬
+function StrategyTable({ episodes, picks, market, config }) {
   const rows = episodes.map(ep => {
     const all = picks.filter(p => p.ep === ep.ep && p.market === market);
     const filtered = config.followOnly === 'all'
@@ -261,12 +265,16 @@ function StrategyTable({ episodes, picks, market, period, config }) {
       : all.filter(p => p.confidence === config.followOnly ||
                         (config.followOnly === 'doing_watching' && (p.confidence === 'doing' || p.confidence === 'watching')));
     if (filtered.length === 0) return null;
-    const avg = filtered.reduce((a, p) => a + (p[period] ?? 0), 0) / filtered.length;
-    const bench = filtered.reduce((a, p) => a + (p[`bench_${period}`] || 0), 0) / filtered.length;
-    return { ep, picks: filtered, avg, bench, alpha: avg - bench };
+
+    const withRt = filtered.map(p => ({ ...p, _rt: calcReturnToday(p) })).filter(p => p._rt !== null);
+    if (withRt.length === 0) return null;
+
+    const avg = withRt.reduce((a, p) => a + p._rt.returnPct, 0) / withRt.length;
+    const bench = withRt.reduce((a, p) => a + bestBenchReturn(p), 0) / withRt.length;
+    const holdingDays = withRt[0]._rt.holdingDays;
+    return { ep, picks: withRt, avg, bench, alpha: avg - bench, holdingDays };
   }).filter(Boolean);
 
-  // 累積報酬：把每集當作一筆獨立資金，算總和
   const totalCapital = rows.length * config.capitalPerEpisode;
   const totalPnl = rows.reduce((a, r) => a + config.capitalPerEpisode * r.avg / 100, 0);
   const benchPnl = rows.reduce((a, r) => a + config.capitalPerEpisode * r.bench / 100, 0);
@@ -275,13 +283,11 @@ function StrategyTable({ episodes, picks, market, period, config }) {
   const hits = rows.filter(r => r.avg > 0).length;
   const beats = rows.filter(r => r.alpha > 0).length;
 
-  const periodLabel = { w1: '1週', w2: '2週', m1: '1個月', q1: '1季' }[period];
   const benchName = market === 'us' ? 'SPY' : '0050';
   const ccy = market === 'us' ? '$' : 'NT$';
 
   return (
     <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, overflow: 'hidden' }}>
-      {/* 策略標題 */}
       <div style={{ padding: '18px 20px 16px', borderBottom: `1px solid ${C.border}`, background: 'linear-gradient(180deg, #fbfcfd, #fff)' }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 20, flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: 280 }}>
@@ -289,13 +295,12 @@ function StrategyTable({ episodes, picks, market, period, config }) {
               <span style={{ fontSize: 10.5, color: C.accent, fontFamily: 'var(--font-mono)', fontWeight: 700, letterSpacing: '0.1em' }}>FOLLOW STRATEGY · 跟單回測</span>
             </div>
             <div style={{ fontSize: 16, fontWeight: 700, color: C.text, letterSpacing: '-0.01em', marginBottom: 4 }}>
-              每集節目下個交易日開盤買入 · 持有 {periodLabel}
+              每集節目下個交易日開盤買入 · 持有至今
             </div>
             <div style={{ fontSize: 12, color: C.textMuted, lineHeight: 1.5 }}>
-              策略：只跟 <b>{config.followOnly === 'doing' ? '「有在做」' : config.followOnly === 'doing_watching' ? '「有在做 / 觀察中」' : '全部提及'}</b> 個股、每集等權重投入 {ccy}{config.capitalPerEpisode.toLocaleString()}、持有 {periodLabel} 後賣出。
+              策略：只跟 <b>{config.followOnly === 'doing' ? '「有在做」' : config.followOnly === 'doing_watching' ? '「有在做 / 觀察中」' : '全部提及'}</b> 個股、每集等權重投入 {ccy}{config.capitalPerEpisode.toLocaleString()}、持有至今。
             </div>
           </div>
-          {/* 大數字結果 */}
           <div style={{ display: 'flex', gap: 0, border: `1px solid ${C.border}`, borderRadius: 6, overflow: 'hidden' }}>
             <div style={{ padding: '10px 18px', borderRight: `1px solid ${C.border}`, minWidth: 130 }}>
               <div style={{ fontSize: 10, color: C.textSubtle, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>跟單平均報酬</div>
@@ -328,28 +333,20 @@ function StrategyTable({ episodes, picks, market, period, config }) {
         </div>
       </div>
 
-      {/* 每集 breakdown */}
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
           <thead style={{ background: C.surfaceAlt }}>
             <tr>
               <th style={{ textAlign: 'left', padding: '10px 16px', fontSize: 10.5, color: C.textMuted, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', borderBottom: `1px solid ${C.border}` }}>集數 / 日期</th>
               <th style={{ textAlign: 'left', padding: '10px 12px', fontSize: 10.5, color: C.textMuted, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', borderBottom: `1px solid ${C.border}` }}>當集跟單標的</th>
-              <th style={{ textAlign: 'right', padding: '10px 12px', fontSize: 10.5, color: C.textMuted, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', borderBottom: `1px solid ${C.border}`, width: 110, background: period==='w1' ? C.accentBg : 'transparent' }}>1W</th>
-              <th style={{ textAlign: 'right', padding: '10px 12px', fontSize: 10.5, color: C.textMuted, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', borderBottom: `1px solid ${C.border}`, width: 110, background: period==='w2' ? C.accentBg : 'transparent' }}>2W</th>
-              <th style={{ textAlign: 'right', padding: '10px 12px', fontSize: 10.5, color: C.textMuted, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', borderBottom: `1px solid ${C.border}`, width: 110, background: period==='m1' ? C.accentBg : 'transparent' }}>1M</th>
-              <th style={{ textAlign: 'right', padding: '10px 12px', fontSize: 10.5, color: C.textMuted, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', borderBottom: `1px solid ${C.border}`, width: 110, background: period==='q1' ? C.accentBg : 'transparent' }}>1Q</th>
-              <th style={{ textAlign: 'right', padding: '10px 16px', fontSize: 10.5, color: C.textMuted, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', borderBottom: `1px solid ${C.border}`, width: 140 }}>
-                {periodLabel} 損益·α
-              </th>
+              <th style={{ textAlign: 'center', padding: '10px 12px', fontSize: 10.5, color: C.textMuted, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', borderBottom: `1px solid ${C.border}`, width: 80 }}>持有天數</th>
+              <th style={{ textAlign: 'right', padding: '10px 12px', fontSize: 10.5, color: C.textMuted, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', borderBottom: `1px solid ${C.border}`, background: C.accentBg, width: 120 }}>至今報酬</th>
+              <th style={{ textAlign: 'right', padding: '10px 16px', fontSize: 10.5, color: C.textMuted, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', borderBottom: `1px solid ${C.border}`, width: 140 }}>損益·α</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((r, i) => {
               const pnl = config.capitalPerEpisode * r.avg / 100;
-              const bpnl = config.capitalPerEpisode * r.bench / 100;
-              // per-period averages
-              const per = (k) => r.picks.reduce((a, p) => a + (p[k] ?? 0), 0) / r.picks.length;
               return (
                 <tr key={r.ep.ep} style={{ borderBottom: `1px solid ${C.border}`, background: i % 2 === 0 ? C.surface : '#fbfcfd' }}>
                   <td style={{ padding: '14px 16px', verticalAlign: 'top' }}>
@@ -362,7 +359,7 @@ function StrategyTable({ episodes, picks, market, period, config }) {
                   <td style={{ padding: '14px 12px', verticalAlign: 'top' }}>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                       {r.picks.map(p => {
-                        const v = p[period] ?? 0;
+                        const v = p._rt.returnPct;
                         return (
                           <span key={p.ticker} style={{
                             display: 'inline-flex', alignItems: 'center', gap: 4,
@@ -380,17 +377,14 @@ function StrategyTable({ episodes, picks, market, period, config }) {
                       {r.picks.length} 檔等權重 · {ccy}{(config.capitalPerEpisode / r.picks.length).toLocaleString(undefined, { maximumFractionDigits: 0 })} / 檔
                     </div>
                   </td>
-                  {['w1','w2','m1','q1'].map(k => {
-                    const v = per(k);
-                    const isActive = period === k;
-                    return (
-                      <td key={k} style={{ padding: '14px 12px', textAlign: 'right', verticalAlign: 'top', background: isActive ? C.accentBg : 'transparent' }}>
-                        <div style={{ fontSize: 14, fontWeight: isActive ? 700 : 500, fontFamily: 'var(--font-mono)', color: v >= 0 ? C.up : C.down, fontVariantNumeric: 'tabular-nums' }}>
-                          {fmt(v)}
-                        </div>
-                      </td>
-                    );
-                  })}
+                  <td style={{ padding: '14px 12px', textAlign: 'center', verticalAlign: 'top', fontFamily: 'var(--font-mono)', color: C.textMuted }}>
+                    {r.holdingDays} 天
+                  </td>
+                  <td style={{ padding: '14px 12px', textAlign: 'right', verticalAlign: 'top', background: C.accentBg }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)', color: r.avg >= 0 ? C.up : C.down, fontVariantNumeric: 'tabular-nums' }}>
+                      {fmt(r.avg)}
+                    </div>
+                  </td>
                   <td style={{ padding: '14px 16px', textAlign: 'right', verticalAlign: 'top' }}>
                     <div style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--font-mono)', color: pnl >= 0 ? C.up : C.down, fontVariantNumeric: 'tabular-nums' }}>
                       {pnl >= 0 ? '+' : ''}{ccy}{Math.round(pnl).toLocaleString()}
@@ -411,7 +405,8 @@ function StrategyTable({ episodes, picks, market, period, config }) {
               <td style={{ padding: '14px 12px', fontSize: 11.5, opacity: 0.8, fontFamily: 'var(--font-mono)' }}>
                 跟單命中 {hits}/{rows.length} 集 · 打敗大盤 {beats}/{rows.length} 集
               </td>
-              <td colSpan={4} style={{ padding: '14px 12px', textAlign: 'right', fontSize: 11, opacity: 0.75 }}>
+              <td style={{ padding: '14px 12px' }} />
+              <td style={{ padding: '14px 12px', textAlign: 'right', fontSize: 11, opacity: 0.75 }}>
                 總投入 {ccy}{totalCapital.toLocaleString()}
               </td>
               <td style={{ padding: '14px 16px', textAlign: 'right' }}>
@@ -427,7 +422,6 @@ function StrategyTable({ episodes, picks, market, period, config }) {
         </table>
       </div>
 
-      {/* 免責 */}
       <div style={{ padding: '10px 20px', background: C.surfaceAlt, fontSize: 10.5, color: C.textSubtle, lineHeight: 1.5, fontFamily: 'var(--font-mono)' }}>
         * 進場假設為節目發布後首個交易日開盤價等權重買入；未計入手續費、稅、滑價。合成示意資料，不構成投資建議。
       </div>
@@ -437,23 +431,21 @@ function StrategyTable({ episodes, picks, market, period, config }) {
 
 // ─── CumulativeChart (SVG P&L) ────────────────────────────
 
-function CumulativeChart({ episodes, picks, market, period, config }) {
-  // 以每集為時間點，畫累積 P&L ($ 或 NT$)
-  const sorted = [...episodes].sort((a, b) => a.ep - b.ep); // 舊 → 新
+function CumulativeChart({ episodes, picks, market, config }) {
+  const sorted = [...episodes].sort((a, b) => a.ep - b.ep);
   const ccy = market === 'us' ? '$' : 'NT$';
   const cap = config.capitalPerEpisode;
-  const delay = config.entryDelay || 0;
 
-  // 建三條線：跟單策略 / 大盤 / 差額
   let cumStrat = 0, cumBench = 0;
   const points = sorted.map(ep => {
     const pool = picks.filter(p => p.ep === ep.ep && p.market === market);
     const filt = filterByConfidence(pool, config.followOnly);
-    if (filt.length === 0) {
+    const withRt = filt.map(p => ({ ...p, _rt: calcReturnToday(p) })).filter(p => p._rt !== null);
+    if (withRt.length === 0) {
       return { ep: ep.ep, date: ep.date, cumStrat, cumBench, epPnl: 0, epBench: 0, hasData: false };
     }
-    const avg = filt.reduce((a, p) => a + computeDelayed(p, period, delay), 0) / filt.length;
-    const bench = filt.reduce((a, p) => a + benchForPeriod(p, period), 0) / filt.length;
+    const avg = withRt.reduce((a, p) => a + p._rt.returnPct, 0) / withRt.length;
+    const bench = withRt.reduce((a, p) => a + bestBenchReturn(p), 0) / withRt.length;
     const epPnl = cap * avg / 100;
     const epBench = cap * bench / 100;
     cumStrat += epPnl;
@@ -464,7 +456,6 @@ function CumulativeChart({ episodes, picks, market, period, config }) {
   const valid = points.filter(p => p.hasData);
   if (valid.length === 0) return null;
 
-  // chart dims
   const W = 1100, H = 260, padL = 56, padR = 20, padT = 20, padB = 36;
   const innerW = W - padL - padR, innerH = H - padT - padB;
   const allVals = valid.flatMap(p => [p.cumStrat, p.cumBench, 0]);
@@ -478,11 +469,7 @@ function CumulativeChart({ episodes, picks, market, period, config }) {
   const stratLine = valid.map((p, i) => `${xScale(i)},${yScale(p.cumStrat)}`).join(' ');
   const benchLine = valid.map((p, i) => `${xScale(i)},${yScale(p.cumBench)}`).join(' ');
   const zeroY = yScale(0);
-
-  // area under strat
   const stratArea = `${padL},${zeroY} ${stratLine} ${xScale(valid.length - 1)},${zeroY}`;
-
-  // y ticks
   const yTicks = [yLo, yLo + (yHi - yLo) * 0.25, yLo + (yHi - yLo) * 0.5, yLo + (yHi - yLo) * 0.75, yHi];
 
   const finalStrat = valid[valid.length - 1].cumStrat;
@@ -491,7 +478,6 @@ function CumulativeChart({ episodes, picks, market, period, config }) {
   const stratPct = finalStrat / totalCap * 100;
   const benchPct = finalBench / totalCap * 100;
 
-  // max drawdown on strat
   let peak = 0, maxDD = 0;
   valid.forEach(p => {
     if (p.cumStrat > peak) peak = p.cumStrat;
@@ -499,9 +485,7 @@ function CumulativeChart({ episodes, picks, market, period, config }) {
     if (dd < maxDD) maxDD = dd;
   });
 
-  const periodLabel = { w1: '1週', w2: '2週', m1: '1個月', q1: '1季' }[period];
   const benchName = market === 'us' ? 'SPY' : '0050';
-  const delayLabel = delay === 0 ? '即時' : `延遲 ${delay} 天`;
 
   return (
     <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, marginTop: 20, overflow: 'hidden' }}>
@@ -509,7 +493,7 @@ function CumulativeChart({ episodes, picks, market, period, config }) {
         <div>
           <div style={{ fontSize: 10.5, color: C.accent, fontFamily: 'var(--font-mono)', fontWeight: 700, letterSpacing: '0.1em', marginBottom: 4 }}>CUMULATIVE P&L · 累積損益曲線</div>
           <div style={{ fontSize: 15, fontWeight: 700, color: C.text }}>
-            每集投入 {ccy}{cap.toLocaleString()} · 持有 {periodLabel} · {delayLabel}進場
+            每集投入 {ccy}{cap.toLocaleString()} · 持有至今
           </div>
           <div style={{ fontSize: 11.5, color: C.textMuted, marginTop: 3 }}>
             時間軸由左（最舊集）至右（最新集）· 面積＝累積損益（實線＝跟單、虛線＝同金額買 {benchName}）
@@ -551,7 +535,6 @@ function CumulativeChart({ episodes, picks, market, period, config }) {
 
       <div style={{ padding: '14px 8px 4px' }}>
         <svg viewBox={`0 0 ${W} ${H}`} width="100%" style={{ display: 'block', maxHeight: 320 }}>
-          {/* y grid */}
           {yTicks.map((t, i) => (
             <g key={i}>
               <line x1={padL} x2={W - padR} y1={yScale(t)} y2={yScale(t)}
@@ -563,17 +546,9 @@ function CumulativeChart({ episodes, picks, market, period, config }) {
               </text>
             </g>
           ))}
-
-          {/* area */}
           <polygon points={stratArea} fill={finalStrat >= 0 ? C.up : C.down} fillOpacity="0.08" />
-
-          {/* bench line (dashed) */}
           <polyline points={benchLine} fill="none" stroke={C.textMuted} strokeWidth="1.5" strokeDasharray="4 3" />
-
-          {/* strat line */}
           <polyline points={stratLine} fill="none" stroke={finalStrat >= 0 ? C.up : C.down} strokeWidth="2" />
-
-          {/* dots + ep labels */}
           {valid.map((p, i) => (
             <g key={p.ep}>
               <circle cx={xScale(i)} cy={yScale(p.cumStrat)} r="3.5" fill={C.surface}
@@ -588,8 +563,6 @@ function CumulativeChart({ episodes, picks, market, period, config }) {
               </text>
             </g>
           ))}
-
-          {/* legend */}
           <g transform={`translate(${padL + 8}, ${padT + 8})`}>
             <rect width="180" height="42" fill={C.surface} fillOpacity="0.95" stroke={C.border} rx="3" />
             <line x1="10" y1="14" x2="28" y2="14" stroke={finalStrat >= 0 ? C.up : C.down} strokeWidth="2" />
@@ -605,7 +578,7 @@ function CumulativeChart({ episodes, picks, market, period, config }) {
 
 // ─── ConfidenceBreakdown ──────────────────────────────────
 
-function ConfidenceBreakdown({ episodes, picks, market, period, config }) {
+function ConfidenceBreakdown({ episodes, picks, market, config }) {
   const tiers = [
     { key: 'doing', label: '有在做', desc: '實際有持股 / 加倉的個股', color: C.accent, bg: C.accentBg },
     { key: 'watching', label: '觀察中', desc: '放在雷達上、未進場的個股', color: C.warn, bg: C.warnBg },
@@ -613,22 +586,26 @@ function ConfidenceBreakdown({ episodes, picks, market, period, config }) {
   ];
   const ccy = market === 'us' ? '$' : 'NT$';
   const cap = config.capitalPerEpisode;
-  const delay = config.entryDelay || 0;
 
   const rows = tiers.map(t => {
     const picksInTier = picks.filter(p => p.market === market && p.confidence === t.key);
     if (picksInTier.length === 0) return { ...t, count: 0 };
-    // 每集的平均（此信心度）
+
     const epMap = new Map();
     picksInTier.forEach(p => {
       if (!epMap.has(p.ep)) epMap.set(p.ep, []);
       epMap.get(p.ep).push(p);
     });
     const epRows = [...epMap.entries()].map(([ep, list]) => {
-      const avg = list.reduce((a, p) => a + computeDelayed(p, period, delay), 0) / list.length;
-      const bench = list.reduce((a, p) => a + benchForPeriod(p, period), 0) / list.length;
+      const withRt = list.map(p => ({ ...p, _rt: calcReturnToday(p) })).filter(p => p._rt !== null);
+      if (withRt.length === 0) return null;
+      const avg = withRt.reduce((a, p) => a + p._rt.returnPct, 0) / withRt.length;
+      const bench = withRt.reduce((a, p) => a + bestBenchReturn(p), 0) / withRt.length;
       return { ep, avg, bench };
-    });
+    }).filter(Boolean);
+
+    if (epRows.length === 0) return { ...t, count: picksInTier.length, epCount: 0, avgRet: 0, avgBench: 0, alpha: 0, hits: 0, beats: 0, cumPnl: 0, totalCap: 0 };
+
     const avgRet = epRows.reduce((a, r) => a + r.avg, 0) / epRows.length;
     const avgBench = epRows.reduce((a, r) => a + r.bench, 0) / epRows.length;
     const alpha = avgRet - avgBench;
@@ -642,7 +619,6 @@ function ConfidenceBreakdown({ episodes, picks, market, period, config }) {
     };
   });
 
-  // max for bar scale
   const maxAbs = Math.max(...rows.map(r => Math.abs(r.avgRet || 0)), 1);
 
   return (
@@ -653,7 +629,7 @@ function ConfidenceBreakdown({ episodes, picks, market, period, config }) {
         </div>
         <div style={{ fontSize: 15, fontWeight: 700, color: C.text }}>哪一層的跟單效果最好？</div>
         <div style={{ fontSize: 11.5, color: C.textMuted, marginTop: 3 }}>
-          不管右下角 Tweaks 的「跟單範圍」設定，這裡固定比較三個層級的獨立績效。
+          不管右下角 Tweaks 的「跟單範圍」設定，這裡固定比較三個層級的獨立績效（至今報酬）。
         </div>
       </div>
 
@@ -679,7 +655,6 @@ function ConfidenceBreakdown({ episodes, picks, market, period, config }) {
               </div>
               <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 14, lineHeight: 1.4 }}>{r.desc}</div>
 
-              {/* big number */}
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4 }}>
                 <span style={{ fontSize: 32, fontWeight: 700, fontFamily: 'var(--font-mono)', color: r.avgRet >= 0 ? C.up : C.down, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>
                   {fmt(r.avgRet)}
@@ -687,7 +662,6 @@ function ConfidenceBreakdown({ episodes, picks, market, period, config }) {
                 <span style={{ fontSize: 11, color: C.textMuted, fontFamily: 'var(--font-mono)' }}>平均每集</span>
               </div>
 
-              {/* strat vs bench bar */}
               <div style={{ marginTop: 14 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 10.5, fontFamily: 'var(--font-mono)', marginBottom: 4, color: C.textMuted }}>
                   <span style={{ width: 56 }}>跟單</span>
@@ -717,7 +691,6 @@ function ConfidenceBreakdown({ episodes, picks, market, period, config }) {
                 </div>
               </div>
 
-              {/* stats grid */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 14, paddingTop: 14, borderTop: `1px dashed ${C.border}` }}>
                 <div>
                   <div style={{ fontSize: 10, color: C.textSubtle, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600, marginBottom: 2 }}>超額 α</div>
@@ -747,7 +720,7 @@ function ConfidenceBreakdown({ episodes, picks, market, period, config }) {
       </div>
 
       <div style={{ padding: '10px 20px', background: C.surfaceAlt, fontSize: 10.5, color: C.textSubtle, fontFamily: 'var(--font-mono)' }}>
-        * 每集投入 {ccy}{cap.toLocaleString()} · {delay === 0 ? '即時進場' : `延遲 ${delay} 天進場`} · 持有 {{ w1: '1週', w2: '2週', m1: '1個月', q1: '1季' }[period]}
+        * 每集投入 {ccy}{cap.toLocaleString()} · 持有至今
       </div>
     </div>
   );
@@ -755,25 +728,25 @@ function ConfidenceBreakdown({ episodes, picks, market, period, config }) {
 
 // ─── AnalysisPage (exported wrapper) ──────────────────────
 
-export function AnalysisPage({ data, market, period, config, selected, setSelected, activeEp, setActiveEp }) {
-  const stats = data.stats[market] || {};
+export function AnalysisPage({ data, market, config, selected, setSelected, activeEp, setActiveEp }) {
   const allPicks = data.picks || [];
   const episodes = data.episodes || [];
+  const stats = computeStats(allPicks, market);
   const activeEpObj = episodes.find(e => e.ep === activeEp);
 
   return (
     <div style={{ padding: '20px 28px 60px', maxWidth: 1760, margin: '0 auto' }}>
-      <StatsBar stats={stats} market={market} period={period} />
+      <StatsBar stats={stats} market={market} />
       <EpList episodes={episodes} picks={allPicks} market={market} onPickEp={setActiveEp} activeEp={activeEp} />
       {activeEpObj && (
-        <LatestEpisode ep={activeEpObj} picks={allPicks} period={period} market={market} onSelect={setSelected} />
+        <LatestEpisode ep={activeEpObj} picks={allPicks} market={market} onSelect={setSelected} />
       )}
-      <PicksTable picks={allPicks} episodes={episodes} period={period} market={market} onSelect={setSelected} selected={selected} />
+      <PicksTable picks={allPicks} episodes={episodes} market={market} onSelect={setSelected} selected={selected} />
       <div style={{ marginTop: 20 }}>
-        <StrategyTable episodes={episodes} picks={allPicks} market={market} period={period} config={config} />
+        <StrategyTable episodes={episodes} picks={allPicks} market={market} config={config} />
       </div>
-      <CumulativeChart episodes={episodes} picks={allPicks} market={market} period={period} config={config} />
-      <ConfidenceBreakdown episodes={episodes} picks={allPicks} market={market} period={period} config={config} />
+      <CumulativeChart episodes={episodes} picks={allPicks} market={market} config={config} />
+      <ConfidenceBreakdown episodes={episodes} picks={allPicks} market={market} config={config} />
     </div>
   );
 }
