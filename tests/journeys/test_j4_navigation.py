@@ -4,7 +4,7 @@ Scenario: 使用者在三個頁面之間快速切換，驗證：
   1. 每個頁面 header 標題正確更新
   2. Sidebar active 狀態跟隨切換
   3. Market toggle 在 Action/Analysis 顯示、Episodes 隱藏
-  4. Period selector 只在 Analysis 顯示
+  4. Period selector 已移除
   5. 連續快速切頁不 crash
   6. 共同元素（logo、footer）始終可見
 """
@@ -58,9 +58,9 @@ def test_navigation_full_journey(app):
     expect(page.get_by_role("button", name="美股 US")).to_be_visible()
     expect(page.get_by_role("button", name="台股 TW")).to_be_visible()
 
-    # Period selector visible
+    # Period selector removed
     for period in ["1W", "2W", "1M", "1Q"]:
-        expect(page.get_by_role("button", name=period)).to_be_visible()
+        assert page.get_by_role("button", name=period).count() == 0
 
     # ── Step 4: Episodes page ──
     episodes_btn.click()
