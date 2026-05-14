@@ -28,7 +28,6 @@ function AppInner() {
   const [route, setRoute] = useState(() => localStorage.getItem('gooaye_route') || 'action');
   const [data, setData] = useState({ episodes: [], picks: [], stats: { us: {}, tw: {} } });
   const [dataLoading, setDataLoading] = useState(true);
-  const [period, setPeriod] = useState('w1');
   const [selected, setSelected] = useState(null);
   const [activeEp, setActiveEp] = useState(null);
 
@@ -51,15 +50,14 @@ function AppInner() {
     <div style={{ display: 'flex', minHeight: '100vh', background: C.bg }}>
       <Sidebar route={route} setRoute={setRoute} processingCount={activeCount} />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-        <Header market={market} setMarket={setMarket} route={route}
-          period={period} setPeriod={setPeriod} />
+        <Header market={market} setMarket={setMarket} route={route} />
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {dataLoading && route !== 'episodes' ? (
             <div style={{ padding: 40, textAlign: 'center', color: C.textMuted }}>載入中...</div>
           ) : route === 'action' ? (
             <ActionPage market={market} config={DEFAULT_CONFIG} data={data} />
           ) : route === 'analysis' ? (
-            <AnalysisPage data={data} market={market} period={period}
+            <AnalysisPage data={data} market={market}
               config={DEFAULT_CONFIG} selected={selected} setSelected={setSelected}
               activeEp={activeEp} setActiveEp={setActiveEp} />
           ) : route === 'episodes' ? (

@@ -17,8 +17,6 @@ export function fmtPrice(n) {
   return n.toFixed(2);
 }
 
-export const PERIOD_DAYS = { w1: 5, w2: 10, m1: 21, q1: 63 };
-
 export const DEFAULT_CONFIG = {
   followOnly: 'doing',
   capitalPerEpisode: 10000,
