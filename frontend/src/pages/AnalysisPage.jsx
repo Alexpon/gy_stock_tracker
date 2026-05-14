@@ -1,28 +1,12 @@
 import { useState } from 'react';
-import { C, fmt, fmtPrice, PERIOD_DAYS } from '../constants.js';
+import { C, fmt, fmtPrice } from '../constants.js';
 import { Spark } from '../components/shared/Spark.jsx';
 import { Pill } from '../components/shared/Pill.jsx';
 import { Delta } from '../components/shared/Delta.jsx';
 import { StatCard } from '../components/shared/StatCard.jsx';
+import { calcReturnToday, bestBenchReturn, computeStats } from '../utils/returnToday.js';
 
 // ─── Analytics helpers ────────────────────────────────────
-
-function computeDelayed(pick, period, delayDays) {
-  const spark = pick.sparkline;
-  if (!spark || spark.length === 0) return pick[period] ?? 0;
-  const entryIdx = Math.min(delayDays, spark.length - 1);
-  const exitIdx = Math.min(entryIdx + PERIOD_DAYS[period], spark.length - 1);
-  const entry = spark[entryIdx], exit = spark[exitIdx];
-  if (!entry || entry === 0) return pick[period] ?? 0;
-  return (exit - entry) / entry * 100;
-}
-
-function benchForPeriod(pick, period) {
-  const key = `bench_${period}`;
-  const val = pick[key];
-  if (val !== null && val !== undefined) return val;
-  return 0;
-}
 
 function filterByConfidence(pool, followOnly) {
   if (followOnly === 'all') return pool;
@@ -32,17 +16,9 @@ function filterByConfidence(pool, followOnly) {
 
 // ─── StatsBar ─────────────────────────────────────────────
 
-function StatsBar({ stats, market, period }) {
+function StatsBar({ stats, market }) {
   const benchName = market === 'us' ? 'SPY' : '0050';
-  const benchKey = market === 'us' ? 'vs_spy_q1' : 'vs_0050_q1';
-  const pLabel = { w1: '1W', w2: '2W', m1: '1M', q1: '1Q' }[period];
-  const hitRate = stats[`hit_rate_${period}`] ?? stats.hit_rate_q1;
-  const avgRet = stats[`avg_${period}`] ?? stats.avg_q1;
-  // sub rows — 除了主期間外的其他三個
-  const otherPeriods = ['w1','w2','m1','q1'].filter(p => p !== period);
-  const periodLabel = { w1: '1W', w2: '2W', m1: '1M', q1: '1Q' };
-  const hitSub = otherPeriods.map(p => `${periodLabel[p]} ${((stats[`hit_rate_${p}`]||0)*100).toFixed(0)}%`).join(' · ');
-  const avgSub = otherPeriods.map(p => `${periodLabel[p]} ${fmt(stats[`avg_${p}`]||0)}`).join(' · ');
+  const benchKey = market === 'us' ? 'vs_spy' : 'vs_0050';
   return (
     <div style={{
       background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8,
@@ -50,18 +26,16 @@ function StatsBar({ stats, market, period }) {
     }}>
       <StatCard label="總計提及個股" value={stats.total_picks}
         sub={`有在做 ${stats.doing} · 觀察 ${stats.watching} · 提到 ${stats.mention}`} />
-      <StatCard label={`命中率 (${pLabel})`} value={`${(hitRate * 100).toFixed(0)}%`}
-        sub={hitSub} />
-      <StatCard label={`平均報酬 (${pLabel})`} value={fmt(avgRet)}
-        sub={avgSub}
-        subKind={avgRet >= 0 ? 'up' : 'down'} />
-      <StatCard label={`VS ${benchName} (1Q)`} value={fmt(stats[benchKey])}
+      <StatCard label="命中率 (至今)" value={`${(stats.hit_rate * 100).toFixed(0)}%`} />
+      <StatCard label="平均報酬 (至今)" value={fmt(stats.avg_return)}
+        subKind={stats.avg_return >= 0 ? 'up' : 'down'} />
+      <StatCard label={`VS ${benchName} (至今)`} value={fmt(stats[benchKey])}
         sub={stats[benchKey] >= 0 ? '超越大盤' : '落後大盤'}
         subKind={stats[benchKey] >= 0 ? 'up' : 'down'} />
       <StatCard label="表現最佳" value={stats.best_pick.ticker}
-        sub={fmt(stats.best_pick.q1)} subKind="up" />
+        sub={fmt(stats.best_pick.returnPct)} subKind="up" />
       <StatCard label="表現最差" value={stats.worst_pick.ticker}
-        sub={fmt(stats.worst_pick.q1)} subKind="down" />
+        sub={fmt(stats.worst_pick.returnPct)} subKind="down" />
     </div>
   );
 }
@@ -159,7 +133,7 @@ function LatestEpisode({ ep, picks, period, market, onSelect }) {
 
 // ─── PicksTable ───────────────────────────────────────────
 
-function PicksTable({ picks, episodes, period, market, onSelect, selected }) {
+function PicksTable({ picks, episodes, market, onSelect, selected }) {
   const [sortKey, setSortKey] = useState('ep');
   const [sortDir, setSortDir] = useState('desc');
   const [filter, setFilter] = useState('all');
@@ -167,13 +141,17 @@ function PicksTable({ picks, episodes, period, market, onSelect, selected }) {
   const filtered = picks.filter(p => p.market === market).filter(p => filter === 'all' ? true : p.confidence === filter);
   const sorted = [...filtered].sort((a, b) => {
     let av, bv;
-    if (sortKey === 'return') { av = a[period] ?? 0; bv = b[period] ?? 0; }
-    else if (sortKey === 'ep') { av = a.ep; bv = b.ep; }
+    if (sortKey === 'return') {
+      const ra = calcReturnToday(a); const rb = calcReturnToday(b);
+      av = ra ? ra.returnPct : -Infinity; bv = rb ? rb.returnPct : -Infinity;
+    } else if (sortKey === 'ep') { av = a.ep; bv = b.ep; }
     else if (sortKey === 'confidence') {
       const rank = { doing: 0, watching: 1, mention: 2 };
       av = rank[a.confidence]; bv = rank[b.confidence];
     } else if (sortKey === 'bench') {
-      av = (a[period] ?? 0) - (a[`bench_${period}`] || 0); bv = (b[period] ?? 0) - (b[`bench_${period}`] || 0);
+      const ra = calcReturnToday(a); const rb = calcReturnToday(b);
+      av = (ra ? ra.returnPct : 0) - bestBenchReturn(a);
+      bv = (rb ? rb.returnPct : 0) - bestBenchReturn(b);
     }
     return sortDir === 'desc' ? bv - av : av - bv;
   });
@@ -214,9 +192,9 @@ function PicksTable({ picks, episodes, period, market, onSelect, selected }) {
             <tr>
               <Th>Ticker</Th><Th>Name</Th><Th k="confidence">Signal</Th>
               <Th k="ep" align="center">EP / Date</Th><Th align="center">Entry</Th>
-              <Th align="right" width="110">1W</Th><Th align="right" width="110">2W</Th>
-              <Th align="right" width="110">1M</Th><Th align="right" width="110">1Q</Th>
-              <Th align="center" width="140">Trend</Th><Th k="bench" align="right">vs Bench</Th>
+              <Th align="center">現價</Th>
+              <Th k="return" align="right" width="140">至今報酬</Th>
+              <Th align="center" width="200">Trend</Th><Th k="bench" align="right">vs Bench</Th>
             </tr>
           </thead>
           <tbody>
@@ -228,8 +206,10 @@ function PicksTable({ picks, episodes, period, market, onSelect, selected }) {
               const epBorderMap = Object.fromEntries(epOrder.map((ep, i) => [ep, epBorderColors[i % epBorderColors.length]]));
               return sorted.map((p, i) => {
               const isSel = selected && selected.ticker === p.ticker && selected.ep === p.ep;
-              const val = p[period] ?? 0; const positive = val >= 0;
-              const diff = val - (p[`bench_${period}`] || 0);
+              const rt = calcReturnToday(p);
+              const val = rt ? rt.returnPct : null;
+              const positive = val !== null && val >= 0;
+              const diff = (val ?? 0) - bestBenchReturn(p);
               const bg = isSel ? C.accentBg : epColorMap[p.ep];
               const isFirstOfEp = i === 0 || sorted[i - 1].ep !== p.ep;
               return (
@@ -246,11 +226,18 @@ function PicksTable({ picks, episodes, period, market, onSelect, selected }) {
                     EP{p.ep} <span style={{ color: C.textSubtle }}>· {p.mention_date.slice(5)}</span>
                   </td>
                   <td style={{ padding: '10px 12px', textAlign: 'center', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>{fmtPrice(p.entry)}</td>
-                  <td style={{ padding: '10px 12px', textAlign: 'right', background: period==='w1' ? C.accentBg : 'transparent' }}><Delta value={p.w1} strong={period==='w1'} /></td>
-                  <td style={{ padding: '10px 12px', textAlign: 'right', background: period==='w2' ? C.accentBg : 'transparent' }}><Delta value={p.w2} strong={period==='w2'} /></td>
-                  <td style={{ padding: '10px 12px', textAlign: 'right', background: period==='m1' ? C.accentBg : 'transparent' }}><Delta value={p.m1} strong={period==='m1'} /></td>
-                  <td style={{ padding: '10px 12px', textAlign: 'right', background: period==='q1' ? C.accentBg : 'transparent' }}><Delta value={p.q1} strong={period==='q1'} /></td>
-                  <td style={{ padding: '4px 12px', textAlign: 'center' }}><Spark data={p.sparkline} width={100} height={26} positive={positive} /></td>
+                  <td style={{ padding: '10px 12px', textAlign: 'center', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>
+                    {rt ? fmtPrice(rt.currentPrice) : '—'}
+                  </td>
+                  <td style={{ padding: '10px 12px', textAlign: 'right', background: C.accentBg }}>
+                    {rt ? (
+                      <>
+                        <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-mono)', color: positive ? C.up : C.down, fontVariantNumeric: 'tabular-nums' }}>{fmt(rt.returnPct)}</div>
+                        <div style={{ fontSize: 10, color: C.textSubtle, fontFamily: 'var(--font-mono)', marginTop: 1 }}>{rt.holdingDays} 天</div>
+                      </>
+                    ) : <span style={{ color: C.textSubtle }}>—</span>}
+                  </td>
+                  <td style={{ padding: '4px 12px', textAlign: 'center' }}><Spark data={p.sparkline} width={180} height={28} positive={positive} /></td>
                   <td style={{ padding: '10px 12px', textAlign: 'right' }}><Delta value={diff} /></td>
                 </tr>
               );
