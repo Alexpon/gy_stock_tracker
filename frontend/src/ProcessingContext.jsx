@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useRef } from 'react';
+import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 
 const ProcessingContext = createContext(null);
 
@@ -66,6 +66,21 @@ export function ProcessingProvider({ children }) {
       return next;
     });
   }, []);
+
+  useEffect(() => {
+    const hasFinished = [...jobs.values()].some(j => j.status !== 'processing');
+    if (!hasFinished) return;
+    const timer = setTimeout(() => {
+      setJobs(prev => {
+        const next = new Map(prev);
+        for (const [ep, job] of next) {
+          if (job.status !== 'processing') next.delete(ep);
+        }
+        return next;
+      });
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [jobs]);
 
   const activeCount = [...jobs.values()].filter(j => j.status === 'processing').length;
 

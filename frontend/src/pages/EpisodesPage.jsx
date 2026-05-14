@@ -213,12 +213,23 @@ export function EpisodesPage() {
                       fontSize: 11, fontWeight: 600, color: C.accent,
                       animation: 'pulse 1.5s infinite',
                     }}>處理中...</span>
-                  ) : (ep.status === 'completed' && ep.sectors_count > 0 && !isDone && !isError) ? (
+                  ) : isDone ? (
+                    <span style={{ color: C.up, fontSize: 11, fontWeight: 600 }}>完成</span>
+                  ) : isError ? (
+                    <button
+                      onClick={() => handleProcess(ep.ep)}
+                      style={{
+                        border: 'none', borderRadius: 4, padding: '4px 12px',
+                        fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                        background: C.down, color: '#fff',
+                        fontFamily: 'var(--font-sans)',
+                      }}
+                    >重試</button>
+                  ) : (ep.status === 'completed' && ep.sectors_count > 0) ? (
                     <span style={{ color: C.up, fontSize: 11, fontWeight: 600 }}>完成</span>
                   ) : (
                     <button
                       onClick={() => handleProcess(ep.ep)}
-                      disabled={isProcessing}
                       style={{
                         border: 'none', borderRadius: 4, padding: '4px 12px',
                         fontSize: 11, fontWeight: 600, cursor: 'pointer',
