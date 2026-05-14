@@ -55,11 +55,11 @@ class TestNavigation:
         assert self.page.get_by_role("button", name="美股 US").count() == 0
         assert self.page.get_by_role("button", name="台股 TW").count() == 0
 
-    def test_period_selector_on_analysis(self):
+    def test_period_selector_removed_from_analysis(self):
         self.page.get_by_role("button", name=re.compile("Analysis")).click()
         self.page.wait_for_timeout(300)
         for period in ["1W", "2W", "1M", "1Q"]:
-            assert self.page.get_by_role("button", name=period).is_visible()
+            assert self.page.get_by_role("button", name=period).count() == 0
 
     def test_branding(self):
         assert self.page.locator("text=Gooaye").first.is_visible()

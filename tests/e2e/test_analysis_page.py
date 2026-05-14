@@ -28,11 +28,13 @@ class TestAnalysisUS:
     def test_stats_sub_counts(self):
         assert self.page.locator("text=觀察 1 · 提到 5").is_visible()
 
-    def test_stats_avg_returns(self):
-        card = self.page.locator("div", has_text=re.compile("^平均報酬")).locator("..")
-        assert card.locator("text=-0.80%").first.is_visible()
-        assert self.page.locator("text=2W -4.00%").is_visible()
-        assert self.page.locator("text=1M -13.40%").is_visible()
+    def test_stats_labels_show_return_to_today(self):
+        assert self.page.locator("text=命中率 (至今)").is_visible()
+        assert self.page.locator("text=平均報酬 (至今)").is_visible()
+
+    def test_no_period_sub_rows(self):
+        assert self.page.locator("text=2W -4.00%").count() == 0
+        assert self.page.locator("text=1M -13.40%").count() == 0
 
     def test_timeline_episodes(self):
         assert self.page.locator("text=EP 654").first.is_visible()
@@ -47,6 +49,19 @@ class TestAnalysisUS:
         for ticker in ["NVDA", "META", "AMZN", "AAPL", "ASTS", "PSTG"]:
             assert table.locator(f"td:text-is('{ticker}')").first.is_visible()
 
+    def test_table_has_current_price_column(self):
+        table = self.page.locator("table").first
+        assert table.locator("th", has_text="現價").is_visible()
+
+    def test_table_has_return_to_today_column(self):
+        table = self.page.locator("table").first
+        assert table.locator("th", has_text="至今報酬").is_visible()
+
+    def test_table_no_period_columns(self):
+        table = self.page.locator("table").first
+        for period in ["1W", "2W", "1M", "1Q"]:
+            assert table.locator(f"th:text-is('{period}')").count() == 0
+
     def test_table_entry_prices(self):
         table = self.page.locator("table").first
         assert table.locator("text=199.98").is_visible()
@@ -56,24 +71,9 @@ class TestAnalysisUS:
         assert table.locator("text=112.55").is_visible()
         assert table.locator("text=69.89").is_visible()
 
-    def test_table_ep630_returns(self):
+    def test_table_shows_holding_days(self):
         table = self.page.locator("table").first
-        asts_row = table.locator("tr", has_text="ASTS")
-        assert asts_row.locator("text=-1.20%").first.is_visible()
-        assert asts_row.locator("text=-9.60%").first.is_visible()
-        assert asts_row.locator("text=-23.70%").first.is_visible()
-
-        pstg_row = table.locator("tr", has_text="PSTG")
-        assert pstg_row.locator("text=-0.50%").first.is_visible()
-        assert pstg_row.locator("text=+1.60%").first.is_visible()
-        assert pstg_row.locator("text=-3.10%").first.is_visible()
-
-    def test_table_ep654_no_returns(self):
-        table = self.page.locator("table").first
-        nvda_row = table.locator("tr", has_text="NVDA")
-        cells = nvda_row.locator("td")
-        assert cells.nth(5).inner_text() == "—"
-        assert cells.nth(6).inner_text() == "—"
+        assert table.locator("text=/\\d+ 天/").first.is_visible()
 
     def test_confidence_labels(self):
         table = self.page.locator("table").first
@@ -95,10 +95,9 @@ class TestAnalysisTW:
     def test_stats_sub_counts(self):
         assert self.page.locator("text=有在做 3 · 觀察 1 · 提到 5").is_visible()
 
-    def test_stats_avg_returns(self):
-        card = self.page.locator("div", has_text=re.compile("^平均報酬")).locator("..")
-        assert card.locator("text=+7.").first.is_visible()
-        assert self.page.locator("text=2W +2.50%").is_visible()
+    def test_stats_labels_show_return_to_today(self):
+        assert self.page.locator("text=命中率 (至今)").is_visible()
+        assert self.page.locator("text=平均報酬 (至今)").is_visible()
 
     def test_timeline_pick_counts(self):
         assert self.page.locator("text=5 檔").first.is_visible()
@@ -117,18 +116,6 @@ class TestAnalysisTW:
         assert table.locator("text=320.00").is_visible()
         assert table.locator("text=361.00").is_visible()
 
-    def test_ep630_tw_returns(self):
-        table = self.page.locator("table").first
-        tsmc_630 = table.locator("tr", has_text="1,759")
-        assert tsmc_630.locator("text=+0.60%").first.is_visible()
-        assert tsmc_630.locator("text=+0.80%").first.is_visible()
-        assert tsmc_630.locator("text=+7.60%").first.is_visible()
-
-        wanghong = table.locator("tr", has_text="2337").last
-        assert wanghong.locator("text=+28.00%").first.is_visible()
-        assert wanghong.locator("text=+11.40%").first.is_visible()
-        assert wanghong.locator("text=+48.30%").first.is_visible()
-
     def test_confidence_tiers_section(self):
         assert self.page.locator("text=CONFIDENCE TIERS").is_visible()
         assert self.page.locator("text=有在做").first.is_visible()
@@ -140,6 +127,14 @@ class TestAnalysisTW:
         strategy_table = self.page.locator("table").nth(1)
         assert strategy_table.locator("text=EP 654").is_visible()
         assert strategy_table.locator("text=EP 630").is_visible()
+
+    def test_strategy_table_shows_holding_days(self):
+        strategy_table = self.page.locator("table").nth(1)
+        assert strategy_table.locator("text=持有天數").is_visible()
+        assert strategy_table.locator("text=/\\d+ 天/").first.is_visible()
+
+    def test_strategy_description_says_hold_to_today(self):
+        assert self.page.locator("text=持有至今").first.is_visible()
 
     def test_cumulative_chart_exists(self):
         assert self.page.locator("text=CUMULATIVE P&L").is_visible()
