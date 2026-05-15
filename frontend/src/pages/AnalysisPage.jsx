@@ -587,8 +587,17 @@ function ConfidenceBreakdown({ episodes, picks, market, config }) {
   const ccy = market === 'us' ? '$' : 'NT$';
   const cap = config.capitalPerEpisode;
 
+  const marketPicks = picks.filter(p => p.market === market);
+  const allEpNums = [...new Set(marketPicks.map(p => p.ep))].sort((a, b) => b - a);
+  const epOptions = [3, 5, 10].filter(n => n <= allEpNums.length);
+  if (allEpNums.length > 0 && !epOptions.includes(allEpNums.length)) epOptions.push(allEpNums.length);
+
+  const [nEps, setNEps] = useState(() => allEpNums.length);
+  const selectedEps = new Set(allEpNums.slice(0, nEps));
+  const sharedEpCount = selectedEps.size;
+
   const rows = tiers.map(t => {
-    const picksInTier = picks.filter(p => p.market === market && p.confidence === t.key);
+    const picksInTier = marketPicks.filter(p => p.confidence === t.key && selectedEps.has(p.ep));
     if (picksInTier.length === 0) return { ...t, count: 0 };
 
     const epMap = new Map();
@@ -604,18 +613,19 @@ function ConfidenceBreakdown({ episodes, picks, market, config }) {
       return { ep, avg, bench };
     }).filter(Boolean);
 
-    if (epRows.length === 0) return { ...t, count: picksInTier.length, epCount: 0, avgRet: 0, avgBench: 0, alpha: 0, hits: 0, beats: 0, cumPnl: 0, totalCap: 0 };
+    const activeEpCount = epRows.length;
+    if (activeEpCount === 0) return { ...t, count: picksInTier.length, epCount: 0, sharedEpCount, avgRet: 0, avgBench: 0, alpha: 0, hits: 0, beats: 0, cumPnl: 0, totalCap: 0 };
 
-    const avgRet = epRows.reduce((a, r) => a + r.avg, 0) / epRows.length;
-    const avgBench = epRows.reduce((a, r) => a + r.bench, 0) / epRows.length;
+    const avgRet = epRows.reduce((a, r) => a + r.avg, 0) / activeEpCount;
+    const avgBench = epRows.reduce((a, r) => a + r.bench, 0) / activeEpCount;
     const alpha = avgRet - avgBench;
     const hits = epRows.filter(r => r.avg > 0).length;
     const beats = epRows.filter(r => r.avg > r.bench).length;
     const cumPnl = epRows.reduce((a, r) => a + cap * r.avg / 100, 0);
     return {
-      ...t, count: picksInTier.length, epCount: epRows.length,
+      ...t, count: picksInTier.length, epCount: activeEpCount, sharedEpCount,
       avgRet, avgBench, alpha, hits, beats, cumPnl,
-      totalCap: epRows.length * cap,
+      totalCap: activeEpCount * cap,
     };
   });
 
@@ -624,12 +634,29 @@ function ConfidenceBreakdown({ episodes, picks, market, config }) {
   return (
     <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, marginTop: 20, overflow: 'hidden' }}>
       <div style={{ padding: '16px 20px 14px', borderBottom: `1px solid ${C.border}` }}>
-        <div style={{ fontSize: 10.5, color: C.accent, fontFamily: 'var(--font-mono)', fontWeight: 700, letterSpacing: '0.1em', marginBottom: 4 }}>
-          CONFIDENCE TIERS · 信心度拆分
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontSize: 10.5, color: C.accent, fontFamily: 'var(--font-mono)', fontWeight: 700, letterSpacing: '0.1em', marginBottom: 4 }}>
+              CONFIDENCE TIERS · 信心度拆分
+            </div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: C.text }}>哪一層的跟單效果最好？</div>
+          </div>
+          {epOptions.length > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ fontSize: 11, color: C.textMuted, marginRight: 4 }}>最近</span>
+              {epOptions.map(n => (
+                <button key={n} onClick={() => setNEps(n)} style={{
+                  padding: '3px 10px', fontSize: 12, fontFamily: 'var(--font-mono)', fontWeight: 600,
+                  border: `1px solid ${nEps === n ? C.accent : C.border}`, borderRadius: 4,
+                  background: nEps === n ? C.accentBg : C.surface, color: nEps === n ? C.accent : C.textMuted,
+                  cursor: 'pointer',
+                }}>{n === allEpNums.length ? '全部' : `${n} 集`}</button>
+              ))}
+            </div>
+          )}
         </div>
-        <div style={{ fontSize: 15, fontWeight: 700, color: C.text }}>哪一層的跟單效果最好？</div>
         <div style={{ fontSize: 11.5, color: C.textMuted, marginTop: 3 }}>
-          不管右下角 Tweaks 的「跟單範圍」設定，這裡固定比較三個層級的獨立績效（至今報酬）。
+          三個層級在同樣 {sharedEpCount} 集範圍內的獨立績效比較（至今報酬）。
         </div>
       </div>
 
@@ -650,7 +677,7 @@ function ConfidenceBreakdown({ episodes, picks, market, config }) {
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: r.color }} />
                 <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{r.label}</span>
                 <span style={{ fontSize: 11, color: C.textSubtle, fontFamily: 'var(--font-mono)', marginLeft: 'auto' }}>
-                  {r.count} 檔 · {r.epCount} 集
+                  {r.count} 檔 · {r.epCount}/{r.sharedEpCount} 集
                 </span>
               </div>
               <div style={{ fontSize: 11, color: C.textMuted, marginBottom: 14, lineHeight: 1.4 }}>{r.desc}</div>
