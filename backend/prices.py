@@ -15,6 +15,10 @@ def yf_ticker(ticker, market):
     return f"{ticker}.TW" if market == "tw" else ticker
 
 
+def yf_ticker_otc(ticker, market):
+    return f"{ticker}.TWO" if market == "tw" else None
+
+
 def bench_ticker(market):
     return "0050.TW" if market == "tw" else "SPY"
 
@@ -27,34 +31,37 @@ def _flatten_columns(data, ticker_symbol):
     return data
 
 
-def fetch_entry_price(ticker, market, mention_date):
+def _download_with_otc_fallback(ticker, market, start_str, end_str):
+    """Download from yfinance, trying .TWO suffix for TW stocks if .TW returns no data."""
     import pandas as pd
     yf_t = yf_ticker(ticker, market)
+    data = yf.download(yf_t, start=start_str, end=end_str, progress=False)
+    if data.empty and market == "tw":
+        otc = yf_ticker_otc(ticker, market)
+        if otc:
+            data = yf.download(otc, start=start_str, end=end_str, progress=False)
+    if not data.empty and isinstance(data.columns, pd.MultiIndex):
+        data = data.droplevel(1, axis=1)
+    return data
+
+
+def fetch_entry_price(ticker, market, mention_date):
     start = datetime.strptime(mention_date, "%Y-%m-%d") + timedelta(days=1)
     end = start + timedelta(days=10)
-    data = yf.download(yf_t, start=start.strftime("%Y-%m-%d"), end=end.strftime("%Y-%m-%d"), progress=False)
+    data = _download_with_otc_fallback(ticker, market, start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d"))
     if data.empty:
         logger.warning("No price data for %s after %s", ticker, mention_date)
         return None
-    # Flatten MultiIndex columns if present (yfinance 0.2.x single ticker)
-    if isinstance(data.columns, pd.MultiIndex):
-        data = data.droplevel(1, axis=1)
     return round(float(data["Open"].iloc[0]), 2)
 
 
 def calculate_returns(ticker, market, entry_date_str, entry_price):
-    import pandas as pd
-    yf_t = yf_ticker(ticker, market)
     start = datetime.strptime(entry_date_str, "%Y-%m-%d")
     end = datetime.now() + timedelta(days=1)
-    data = yf.download(yf_t, start=start.strftime("%Y-%m-%d"), end=end.strftime("%Y-%m-%d"), progress=False)
+    data = _download_with_otc_fallback(ticker, market, start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d"))
 
     if data.empty:
         return {"w1": None, "w2": None, "m1": None, "q1": None, "sparkline": []}
-
-    # Flatten MultiIndex columns if present (yfinance 0.2.x single ticker)
-    if isinstance(data.columns, pd.MultiIndex):
-        data = data.droplevel(1, axis=1)
 
     trading_days = len(data)
     returns = {}
@@ -83,10 +90,10 @@ def calculate_bench_returns(market, entry_date_str):
     start = datetime.strptime(entry_date_str, "%Y-%m-%d")
     end = datetime.now() + timedelta(days=1)
     data = yf.download(bt, start=start.strftime("%Y-%m-%d"), end=end.strftime("%Y-%m-%d"), progress=False)
+    if not data.empty and isinstance(data.columns, pd.MultiIndex):
+        data = data.droplevel(1, axis=1)
     if data.empty:
         return {"bench_w1": None, "bench_w2": None, "bench_m1": None, "bench_q1": None}
-    if isinstance(data.columns, pd.MultiIndex):
-        data = data.droplevel(1, axis=1)
     entry = float(data["Open"].iloc[0])
     results = {}
     for period, days in RETURN_PERIODS:

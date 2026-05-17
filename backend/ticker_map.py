@@ -59,6 +59,31 @@ TICKER_MAP = {
     "SERV": ("SERV", "Serve Robotics", "us"),
     "Uber": ("UBER", "Uber", "us"),
     "UBER": ("UBER", "Uber", "us"),
+    # US - Cybersecurity / Cloud
+    "Cloudflare": ("NET", "Cloudflare", "us"),
+    "CLOUDFLARE": ("NET", "Cloudflare", "us"),
+    "NET": ("NET", "Cloudflare", "us"),
+    "CrowdStrike": ("CRWD", "CrowdStrike", "us"),
+    "CloudStrike": ("CRWD", "CrowdStrike", "us"),
+    "CRWD": ("CRWD", "CrowdStrike", "us"),
+    "Palantir": ("PLTR", "Palantir", "us"),
+    "PLTR": ("PLTR", "Palantir", "us"),
+    # US - Software / SaaS
+    "Salesforce": ("CRM", "Salesforce", "us"),
+    "CRM": ("CRM", "Salesforce", "us"),
+    "Adobe": ("ADBE", "Adobe", "us"),
+    "ADBE": ("ADBE", "Adobe", "us"),
+    # US - Memory / Storage
+    "美光": ("MU", "Micron", "us"),
+    "Micron": ("MU", "Micron", "us"),
+    "MU": ("MU", "Micron", "us"),
+    "Sandisk": ("WDC", "Western Digital", "us"),
+    "SanDisk": ("WDC", "Western Digital", "us"),
+    "WDC": ("WDC", "Western Digital", "us"),
+    # US - Other
+    "Samsung": ("SSNLF", "Samsung", "us"),
+    "三星": ("SSNLF", "Samsung", "us"),
+    "MARV": ("MRVL", "Marvell Tech", "us"),
     # US - Quantum
     "IonQ": ("IONQ", "IonQ", "us"),
     "IONQ": ("IONQ", "IonQ", "us"),

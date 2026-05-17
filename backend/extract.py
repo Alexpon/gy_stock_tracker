@@ -109,15 +109,23 @@ def _resolve_ticker_web(name, market):
         return None
 
 
+def _is_valid_us_ticker(ticker):
+    """Check if a string looks like a valid US stock ticker (1-5 uppercase letters)."""
+    import re
+    return bool(re.match(r'^[A-Z]{1,5}$', ticker))
+
+
 def _is_valid_pick(pick):
     """Filter out non-stock items."""
     name_lower = pick.get("name", "").lower().strip()
     ticker = pick.get("ticker", "").strip()
     if name_lower in KNOWN_NON_STOCKS:
         return False
-    if not ticker or ticker == name_lower:
+    if not ticker or ticker.lower() == name_lower:
         return False
     if pick.get("market") == "tw" and not ticker.isdigit():
+        return False
+    if pick.get("market") == "us" and not _is_valid_us_ticker(ticker):
         return False
     return True
 
@@ -177,7 +185,7 @@ def run(ep):
         if known:
             t = known[0]
             market = known[2]
-        elif not t or (market == "tw" and not t.isdigit()):
+        elif not t or (market == "tw" and not t.isdigit()) or (market == "us" and not _is_valid_us_ticker(t)):
             resolved = _resolve_ticker_web(name, market)
             if resolved:
                 t = resolved
