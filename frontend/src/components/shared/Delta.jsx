@@ -7,6 +7,6 @@ export function Delta({ value, strong }) {
     <span style={{
       color: positive ? C.up : C.down, fontWeight: strong ? 600 : 500,
       fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums',
-    }}>{fmt(value)}</span>
+    }}>{positive ? '▲' : '▼'} {fmt(value)}</span>
   );
 }

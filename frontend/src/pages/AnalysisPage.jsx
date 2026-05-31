@@ -238,7 +238,7 @@ function PicksTable({ picks, episodes, market, onSelect, selected }) {
                   <td style={{ padding: '10px 12px', textAlign: 'right', background: C.accentBg }}>
                     {rt ? (
                       <>
-                        <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-mono)', color: positive ? C.up : C.down, fontVariantNumeric: 'tabular-nums' }}>{fmt(rt.returnPct)}</div>
+                        <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-mono)', color: positive ? C.up : C.down, fontVariantNumeric: 'tabular-nums' }}>{positive ? '▲' : '▼'} {fmt(rt.returnPct)}</div>
                         <div style={{ fontSize: 10, color: C.textSubtle, fontFamily: 'var(--font-mono)', marginTop: 1 }}>{rt.holdingDays} 天</div>
                       </>
                     ) : <span style={{ color: C.textSubtle }}>—</span>}
