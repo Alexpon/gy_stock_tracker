@@ -26,7 +26,7 @@ export default function App() {
 function AppInner() {
   const { activeCount } = useProcessing();
   const [market, setMarket] = useState('us');
-  const [route, setRoute] = useState(() => localStorage.getItem('gooaye_route') || 'action');
+  const [route, setRoute] = useState('action');
   const [data, setData] = useState({ episodes: [], picks: [], stats: { us: {}, tw: {} } });
   const [dataLoading, setDataLoading] = useState(true);
   const [selected, setSelected] = useState(null);
@@ -45,7 +45,6 @@ function AppInner() {
       .catch(() => setDataLoading(false));
   }, []);
 
-  useEffect(() => { localStorage.setItem('gooaye_route', route); }, [route]);
   useEffect(() => { setSelected(null); }, [route, market]);
 
   return (
