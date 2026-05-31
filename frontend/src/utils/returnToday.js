@@ -26,9 +26,9 @@ export function computeStats(picks, market) {
     .map(p => ({ ...p, _rt: calcReturnToday(p) }))
     .filter(p => p._rt !== null);
 
-  const hitRate = withReturn.length > 0
-    ? withReturn.filter(p => p._rt.returnPct > 0).length / withReturn.length
-    : 0;
+  const hitTotal = withReturn.length;
+  const hitCount = withReturn.filter(p => p._rt.returnPct > 0).length;
+  const hitRate = hitTotal > 0 ? hitCount / hitTotal : 0;
   const avgReturn = withReturn.length > 0
     ? withReturn.reduce((sum, p) => sum + p._rt.returnPct, 0) / withReturn.length
     : 0;
@@ -50,6 +50,8 @@ export function computeStats(picks, market) {
   return {
     total_picks: total, doing, watching, mention,
     hit_rate: Math.round(hitRate * 100) / 100,
+    hit_count: hitCount,
+    hit_total: hitTotal,
     avg_return: Math.round(avgReturn * 10) / 10,
     [benchKey]: Math.round((avgReturn - avgBench) * 10) / 10,
     best_pick: bestPick,

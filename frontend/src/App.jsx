@@ -5,6 +5,7 @@ import { Sidebar } from './components/Sidebar.jsx';
 import { ActionPage } from './pages/ActionPage.jsx';
 import { AnalysisPage } from './pages/AnalysisPage.jsx';
 import { EpisodesPage } from './pages/EpisodesPage.jsx';
+import { DetailPanel } from './components/DetailPanel.jsx';
 import { ProcessingProvider, useProcessing } from './ProcessingContext.jsx';
 
 const DEFAULT_CONFIG = {
@@ -25,7 +26,7 @@ export default function App() {
 function AppInner() {
   const { activeCount } = useProcessing();
   const [market, setMarket] = useState('us');
-  const [route, setRoute] = useState(() => localStorage.getItem('gooaye_route') || 'action');
+  const [route, setRoute] = useState('action');
   const [data, setData] = useState({ episodes: [], picks: [], stats: { us: {}, tw: {} } });
   const [dataLoading, setDataLoading] = useState(true);
   const [selected, setSelected] = useState(null);
@@ -44,7 +45,7 @@ function AppInner() {
       .catch(() => setDataLoading(false));
   }, []);
 
-  useEffect(() => { localStorage.setItem('gooaye_route', route); }, [route]);
+  useEffect(() => { setSelected(null); }, [route, market]);
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: C.bg }}>
@@ -65,6 +66,9 @@ function AppInner() {
           ) : null}
         </div>
       </div>
+      {selected && (
+        <DetailPanel pick={selected} episodes={data.episodes} onClose={() => setSelected(null)} />
+      )}
     </div>
   );
 }

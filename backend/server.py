@@ -60,7 +60,7 @@ def list_episodes():
     result = []
     for ep_row in episodes:
         ep_num = ep_row["ep"]
-        has_transcript = ep_row["transcript"] is not None
+        has_transcript = ep_row["transcript"] is not None and ep_row["transcript"] != "[]"
         extracted = ep_row.get("market_focus") is not None
         picks = db.get_picks_for_episode(ep_num)
         picks_count = len(picks)
@@ -124,7 +124,7 @@ def process_episode(ep: int):
     steps = {}
     pipeline = []
 
-    need_stt = episode["transcript"] is None
+    need_stt = episode["transcript"] is None or episode["transcript"] == "[]"
     if not need_stt:
         audio_path = config.AUDIO_DIR / f"EP{ep}.mp3"
         if audio_path.exists():

@@ -26,7 +26,8 @@ function StatsBar({ stats, market }) {
     }}>
       <StatCard label="總計提及個股" value={stats.total_picks}
         sub={`有在做 ${stats.doing} · 觀察 ${stats.watching} · 提到 ${stats.mention}`} />
-      <StatCard label="命中率 (至今)" value={`${(stats.hit_rate * 100).toFixed(0)}%`} />
+      <StatCard label="命中率 (至今)" value={`${(stats.hit_rate * 100).toFixed(0)}%`}
+        sub={`正報酬 ${stats.hit_count}/${stats.hit_total} 檔`} />
       <StatCard label="平均報酬 (至今)" value={fmt(stats.avg_return)}
         subKind={stats.avg_return >= 0 ? 'up' : 'down'} />
       <StatCard label={`VS ${benchName} (至今)`} value={fmt(stats[benchKey])}
@@ -237,7 +238,7 @@ function PicksTable({ picks, episodes, market, onSelect, selected }) {
                   <td style={{ padding: '10px 12px', textAlign: 'right', background: C.accentBg }}>
                     {rt ? (
                       <>
-                        <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-mono)', color: positive ? C.up : C.down, fontVariantNumeric: 'tabular-nums' }}>{fmt(rt.returnPct)}</div>
+                        <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-mono)', color: positive ? C.up : C.down, fontVariantNumeric: 'tabular-nums' }}>{positive ? '▲' : '▼'} {fmt(rt.returnPct)}</div>
                         <div style={{ fontSize: 10, color: C.textSubtle, fontFamily: 'var(--font-mono)', marginTop: 1 }}>{rt.holdingDays} 天</div>
                       </>
                     ) : <span style={{ color: C.textSubtle }}>—</span>}
