@@ -5,6 +5,7 @@ import { Sidebar } from './components/Sidebar.jsx';
 import { ActionPage } from './pages/ActionPage.jsx';
 import { AnalysisPage } from './pages/AnalysisPage.jsx';
 import { EpisodesPage } from './pages/EpisodesPage.jsx';
+import { DetailPanel } from './components/DetailPanel.jsx';
 import { ProcessingProvider, useProcessing } from './ProcessingContext.jsx';
 
 const DEFAULT_CONFIG = {
@@ -45,6 +46,7 @@ function AppInner() {
   }, []);
 
   useEffect(() => { localStorage.setItem('gooaye_route', route); }, [route]);
+  useEffect(() => { setSelected(null); }, [route, market]);
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: C.bg }}>
@@ -65,6 +67,9 @@ function AppInner() {
           ) : null}
         </div>
       </div>
+      {selected && (
+        <DetailPanel pick={selected} episodes={data.episodes} onClose={() => setSelected(null)} />
+      )}
     </div>
   );
 }
